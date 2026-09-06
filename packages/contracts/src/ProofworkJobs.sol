@@ -25,7 +25,7 @@ import {IProofworkJobs} from "./interfaces/IProofworkJobs.sol";
 ///
 /// The contract is deliberately not upgradeable. Ownership starts on the deployer and is
 /// intended to move to a multisig once the launch period is over.
-contract ProofworkJobs is Ownable2Step, Pausable, ReentrancyGuard {
+contract ProofworkJobs is IERC8183, IProofworkJobs, Ownable2Step, Pausable, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     uint256 internal constant BPS_DENOMINATOR = 10_000;
@@ -62,6 +62,9 @@ contract ProofworkJobs is Ownable2Step, Pausable, ReentrancyGuard {
     error HooksNotSupported();
     error ProviderAlreadyAssigned(uint256 jobId);
     error NotYetExpired(uint256 jobId, uint256 expiredAt);
+    error NotEvaluator(uint256 jobId, address caller);
+    error NotProvider(uint256 jobId, address caller);
+    error ProviderNotAssigned(uint256 jobId);
 
     /// @param token     USDC on the target network.
     /// @param treasury_ Receives protocol fees.
@@ -173,6 +176,68 @@ contract ProofworkJobs is Ownable2Step, Pausable, ReentrancyGuard {
         _fund(jobId, job);
     }
 
+    // --- delivery and settlement ----------------------------------------------------
+
+    /// @notice The provider marks the work delivered. `deliverable` is a hash of the proof,
+    ///         for Proofwork the pull request and its merge commit.
+    function submit(uint256 jobId, bytes32 deliverable, bytes calldata) external {
+        IERC8183.Job storage job = _job(jobId);
+        if (msg.sender != job.provider) revert NotProvider(jobId, msg.sender);
+        if (job.status != IERC8183.JobStatus.Funded) revert WrongStatus(jobId, job.status);
+
+        job.status = IERC8183.JobStatus.Submitted;
+        emit IERC8183.JobSubmitted(jobId, msg.sender, deliverable);
+    }
+
+    /// @notice The evaluator accepts the work and releases the money.
+    function complete(uint256 jobId, bytes32 reason, bytes calldata) external nonReentrant {
+        IERC8183.Job storage job = _job(jobId);
+        _requireEvaluatorOfFundedJob(jobId, job);
+        _release(jobId, job, reason);
+    }
+
+    /// @notice Close a job without paying. The funder is made whole.
+    /// @dev A funder may withdraw their own job while it is still open and unfunded;
+    ///      after that only the evaluator decides, and the refund is automatic.
+    function reject(uint256 jobId, bytes32 reason, bytes calldata) external nonReentrant {
+        IERC8183.Job storage job = _job(jobId);
+        IERC8183.JobStatus status = job.status;
+
+        if (status == IERC8183.JobStatus.Open) {
+            if (msg.sender != job.client) revert NotClient(jobId, msg.sender);
+            job.status = IERC8183.JobStatus.Rejected;
+            emit IERC8183.JobRejected(jobId, msg.sender, reason);
+            return;
+        }
+
+        _requireEvaluatorOfFundedJob(jobId, job);
+        job.status = IERC8183.JobStatus.Rejected;
+        uint256 amount = job.budget + _extras[jobId].fee;
+        address client = job.client;
+
+        emit IERC8183.JobRejected(jobId, msg.sender, reason);
+        emit IERC8183.Refunded(jobId, client, amount);
+        paymentToken.safeTransfer(client, amount);
+    }
+
+    /// @notice Assign, record and pay in one transaction. This is what a merged pull request
+    ///         triggers: the contributor, the reviewing maintainer and the treasury are all
+    ///         paid before the transaction returns.
+    function settle(uint256 jobId, address provider, bytes32 deliverable, bytes32 reason)
+        external
+        nonReentrant
+    {
+        IERC8183.Job storage job = _job(jobId);
+        _requireEvaluatorOfFundedJob(jobId, job);
+        if (provider == address(0)) revert ZeroAddress();
+
+        job.provider = provider;
+        emit IERC8183.ProviderSet(jobId, provider);
+        emit IERC8183.JobSubmitted(jobId, provider, deliverable);
+
+        _release(jobId, job, reason);
+    }
+
     // --- unwinding ------------------------------------------------------------------
 
     /// @notice Take back an unclaimed bounty.
@@ -282,6 +347,40 @@ contract ProofworkJobs is Ownable2Step, Pausable, ReentrancyGuard {
 
         emit IERC8183.JobFunded(jobId, job.client, budget);
         paymentToken.safeTransferFrom(msg.sender, address(this), budget + fee);
+    }
+
+    /// @dev The whole point of the contract: one transaction, three recipients.
+    ///      Status is written before any transfer and every caller holds the guard.
+    function _release(uint256 jobId, IERC8183.Job storage job, bytes32 reason) internal {
+        address provider = job.provider;
+        if (provider == address(0)) revert ProviderNotAssigned(jobId);
+
+        IProofworkJobs.JobExtra storage extra = _extras[jobId];
+        (uint256 contributorAmount, uint256 maintainerAmount,) =
+            splitFor(job.budget, extra.maintainerRewardBps);
+        uint256 fee = extra.fee;
+        address maintainer = extra.maintainer;
+
+        job.status = IERC8183.JobStatus.Completed;
+
+        emit IERC8183.JobCompleted(jobId, msg.sender, reason);
+        emit IERC8183.PaymentReleased(jobId, provider, contributorAmount);
+        if (maintainerAmount > 0) {
+            emit IProofworkJobs.MaintainerRewardPaid(jobId, maintainer, maintainerAmount);
+        }
+        if (fee > 0) emit IProofworkJobs.FeeCollected(jobId, fee);
+
+        paymentToken.safeTransfer(provider, contributorAmount);
+        if (maintainerAmount > 0) paymentToken.safeTransfer(maintainer, maintainerAmount);
+        if (fee > 0) paymentToken.safeTransfer(treasury, fee);
+    }
+
+    function _requireEvaluatorOfFundedJob(uint256 jobId, IERC8183.Job storage job) internal view {
+        if (msg.sender != job.evaluator) revert NotEvaluator(jobId, msg.sender);
+        IERC8183.JobStatus status = job.status;
+        if (status != IERC8183.JobStatus.Funded && status != IERC8183.JobStatus.Submitted) {
+            revert WrongStatus(jobId, status);
+        }
     }
 
     function _job(uint256 jobId) internal view returns (IERC8183.Job storage job) {
