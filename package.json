@@ -1,0 +1,28 @@
+{
+  "name": "proofwork",
+  "private": true,
+  "packageManager": "bun@1.3.8",
+  "workspaces": ["apps/*", "packages/*"],
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "check": "turbo run typecheck lint test",
+    "typecheck": "turbo run typecheck",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "test": "turbo run test",
+    "db:generate": "bun run --cwd packages/db generate",
+    "db:migrate": "bun run --cwd packages/db migrate",
+    "contracts:build": "bun run --cwd packages/contracts build",
+    "contracts:test": "bun run --cwd packages/contracts test",
+    "contracts:deploy:testnet": "bun run --cwd packages/contracts deploy:testnet",
+    "e2e:testnet": "bun run --cwd packages/core e2e:testnet"
+  },
+  "devDependencies": {
+    "turbo": "^2.10.0",
+    "typescript": "^5.7.0"
+  },
+  "engines": {
+    "bun": ">=1.2.0"
+  }
+}

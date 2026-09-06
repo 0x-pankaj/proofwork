@@ -1,0 +1,49 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "globalEnv": [
+    "ARC_NETWORK",
+    "ARC_TESTNET_RPC_URL",
+    "ARC_MAINNET_CHAIN_ID",
+    "ARC_MAINNET_RPC_URL",
+    "ARC_MAINNET_EXPLORER_URL",
+    "PROOFWORK_JOBS_ADDRESS_TESTNET",
+    "PROOFWORK_JOBS_ADDRESS_MAINNET",
+    "DATABASE_URL",
+    "CIRCLE_API_KEY",
+    "CIRCLE_ENTITY_SECRET",
+    "CIRCLE_WALLET_SET_ID",
+    "CIRCLE_VERIFIER_WALLET_ID",
+    "CIRCLE_TREASURY_WALLET_ID",
+    "CIRCLE_WEBHOOK_SECRET",
+    "GITHUB_APP_ID",
+    "GITHUB_APP_PRIVATE_KEY",
+    "GITHUB_WEBHOOK_SECRET",
+    "GITHUB_CLIENT_ID",
+    "GITHUB_CLIENT_SECRET",
+    "AUTH_SECRET",
+    "AUTH_URL",
+    "ANTHROPIC_API_KEY"
+  ],
+  "globalDependencies": ["packages/config/**"],
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**", ".next/**", "!.next/cache/**", ".open-next/**"]
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true
+    },
+    "typecheck": {
+      "dependsOn": ["^build"],
+      "outputs": []
+    },
+    "lint": {
+      "outputs": []
+    },
+    "test": {
+      "dependsOn": ["^build"],
+      "outputs": []
+    }
+  }
+}

@@ -1,0 +1,38 @@
+# dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# build output
+dist/
+build/
+.next/
+.open-next/
+out/
+.turbo/
+*.tsbuildinfo
+
+# environment and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*recovery*.json
+.dev.vars
+.dev.vars.*
+.wrangler/
+
+# foundry
+cache/
+broadcast/
+packages/contracts/out/
+packages/contracts/cache/
+packages/contracts/broadcast/
+
+# logs and local state
+*.log
+npm-debug.log*
+yarn-error.log*
+.DS_Store
+coverage/
