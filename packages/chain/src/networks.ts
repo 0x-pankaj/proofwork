@@ -81,6 +81,11 @@ export function activeChain(env: ChainEnv = chainEnv()) {
   return chainFor(activeNetwork(env), env);
 }
 
+/** The chain id for a network. Throws for mainnet until launch-day parameters are set. */
+export function chainIdFor(network: ArcNetwork, env: ChainEnv = chainEnv()): number {
+  return network === "testnet" ? ARC_TESTNET_CHAIN_ID : defineArcMainnet(env).id;
+}
+
 /** The RPC URL for a given network, overridable by environment. */
 export function rpcUrlFor(network: ArcNetwork, env: ChainEnv = chainEnv()): string {
   if (network === "testnet") return env.ARC_TESTNET_RPC_URL ?? ARC_TESTNET_RPC_URL;

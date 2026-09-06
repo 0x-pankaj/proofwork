@@ -1,6 +1,7 @@
 import type { Address } from "viem";
+import { deploymentFor } from "./deployments";
 import { type ChainEnv, chainEnv } from "./env";
-import { type ArcNetwork, activeNetwork } from "./networks";
+import { type ArcNetwork, activeNetwork, chainIdFor } from "./networks";
 
 /**
  * Every address the product touches. Nothing outside this package may hardcode one.
@@ -51,19 +52,24 @@ export function usdcAddress(
 }
 
 /**
- * The deployed ProofworkJobs escrow. Written by the deploy script into
- * `deployments/<chainId>.json` and supplied to running services by environment.
+ * The deployed ProofworkJobs escrow.
+ *
+ * An environment variable wins, so a service can be pointed at a fresh deployment without
+ * a release. Otherwise the address comes from the deployment record the deploy script
+ * committed, which is why a checked-out repo works with no configuration at all.
  */
 export function proofworkJobsAddress(
   network: ArcNetwork = activeNetwork(),
   env: ChainEnv = chainEnv(),
 ): Address {
-  const value =
+  const fromEnv =
     network === "testnet" ? env.PROOFWORK_JOBS_ADDRESS_TESTNET : env.PROOFWORK_JOBS_ADDRESS_MAINNET;
-  if (!value) {
-    throw new Error(
-      `ProofworkJobs address is not configured for ${network}. Set PROOFWORK_JOBS_ADDRESS_${network.toUpperCase()}.`,
-    );
-  }
-  return value as Address;
+  if (fromEnv) return fromEnv as Address;
+
+  const deployed = deploymentFor(chainIdFor(network, env))?.ProofworkJobs;
+  if (deployed) return deployed as Address;
+
+  throw new Error(
+    `ProofworkJobs is not deployed on ${network}. Deploy it, or set PROOFWORK_JOBS_ADDRESS_${network.toUpperCase()}.`,
+  );
 }

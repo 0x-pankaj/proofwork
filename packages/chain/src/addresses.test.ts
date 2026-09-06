@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { proofworkJobsAbi } from "./abis";
 import { ADDRESSES, addressesFor, proofworkJobsAddress, usdcAddress } from "./addresses";
 
 describe("addresses", () => {
@@ -26,5 +27,35 @@ describe("addresses", () => {
     expect(proofworkJobsAddress("testnet", { PROOFWORK_JOBS_ADDRESS_TESTNET: "0xcafe" })).toBe(
       "0xcafe",
     );
+  });
+});
+
+describe("deployment record", () => {
+  it("prefers an explicit environment override over the committed record", () => {
+    expect(proofworkJobsAddress("testnet", { PROOFWORK_JOBS_ADDRESS_TESTNET: "0xbeef" })).toBe(
+      "0xbeef",
+    );
+  });
+});
+
+describe("contract abi", () => {
+  it("exports the settlement entrypoints the API calls", () => {
+    const names = proofworkJobsAbi
+      .filter((entry) => entry.type === "function")
+      .map((entry) => ("name" in entry ? entry.name : ""));
+    expect(names).toContain("createAndFund");
+    expect(names).toContain("settle");
+    expect(names).toContain("claimRefund");
+    expect(names).toContain("getJobExtra");
+  });
+
+  it("exports the events the reconciler indexes", () => {
+    const events = proofworkJobsAbi
+      .filter((entry) => entry.type === "event")
+      .map((entry) => ("name" in entry ? entry.name : ""));
+    expect(events).toContain("JobFunded");
+    expect(events).toContain("PaymentReleased");
+    expect(events).toContain("MaintainerRewardPaid");
+    expect(events).toContain("FeeCollected");
   });
 });

@@ -19,7 +19,8 @@
     "contracts:build": "bun run --cwd packages/contracts build",
     "contracts:test": "bun run --cwd packages/contracts test",
     "contracts:deploy:testnet": "bun run --cwd packages/contracts deploy:testnet",
-    "e2e:testnet": "bun run --cwd packages/core e2e:testnet"
+    "e2e:testnet": "bun run --cwd packages/core e2e:testnet",
+    "contracts:export": "bun run --cwd packages/contracts export"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.12",
