@@ -81,8 +81,11 @@ contract ProofworkJobs is IERC8183, IProofworkJobs, Ownable2Step, Pausable, Reen
 
     // --- administration -------------------------------------------------------------
 
-    /// @notice Change the fee and its destination. Jobs already funded keep the fee they
-    ///         were funded with, so a change here can never touch escrowed money.
+    /// @notice Change the fee and its destination.
+    /// @dev The two halves behave differently on purpose. The fee *amount* is snapshotted when
+    ///      a job is funded, so repricing can never touch money already escrowed. The
+    ///      *destination* is read at payout, so rotating the treasury to a multisig redirects
+    ///      fees that have not been paid yet, which is the whole point of rotating it.
     function setFeeConfig(uint16 newFeeBps, address newTreasury) external onlyOwner {
         if (newTreasury == address(0)) revert ZeroAddress();
         if (newFeeBps > MAX_FEE_BPS) revert FeeTooHigh(newFeeBps, MAX_FEE_BPS);
