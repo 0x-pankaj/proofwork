@@ -2,3 +2,5 @@ out/
 cache/
 broadcast/
 !broadcast/**/run-latest.json
+deployments/31337.json
+deployments/*.local.json
