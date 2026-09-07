@@ -1,0 +1,223 @@
+import { formatUsdc } from "@proofwork/chain";
+
+/**
+ * Every comment Proofwork writes on GitHub.
+ *
+ * They are pure functions returning a marker plus a body. The marker is an HTML comment,
+ * invisible in the rendered issue, and it is how a redelivered webhook finds the comment
+ * it already wrote instead of posting a duplicate.
+ */
+
+export type CommentKind =
+  | "funded"
+  | "pending-accept"
+  | "claimed"
+  | "needs-payout"
+  | "unclaimed"
+  | "ai-not-allowed"
+  | "linked"
+  | "settled"
+  | "failed"
+  | "expired"
+  | "status";
+
+export interface RenderedComment {
+  marker: string;
+  body: string;
+}
+
+/** Invisible in the rendered comment; the handle we use to update rather than repeat. */
+export function commentMarker(bountyId: string, kind: CommentKind): string {
+  return `<!-- proofwork:${bountyId}:${kind} -->`;
+}
+
+function render(bountyId: string, kind: CommentKind, lines: string[]): RenderedComment {
+  const marker = commentMarker(bountyId, kind);
+  return { marker, body: `${lines.join("\n")}\n\n${marker}` };
+}
+
+export interface FundedInput {
+  bountyId: string;
+  issueNumber: number;
+  amountUsdc: bigint;
+  maintainerRewardUsdc: bigint;
+  bountyUrl: string;
+  fundingTxUrl: string;
+  expiresAt: Date;
+}
+
+/** Posted once escrow is confirmed on Arc. This is the comment that invites work. */
+export function fundedComment(input: FundedInput): RenderedComment {
+  const reward =
+    input.maintainerRewardUsdc > 0n
+      ? `, including ${formatUsdc(input.maintainerRewardUsdc)} to the maintainer who reviews it`
+      : "";
+  return render(input.bountyId, "funded", [
+    `### 💰 ${formatUsdc(input.amountUsdc)} bounty, escrowed on Arc`,
+    "",
+    `The funds are locked in a contract${reward}. They are released the moment a pull request that fixes this issue is merged — no invoice, no payout run.`,
+    "",
+    `Comment \`/claim\` to take it, then open a pull request whose body says \`Fixes #${input.issueNumber}\`.`,
+    "",
+    `[Bounty details](${input.bountyUrl}) · [Escrow transaction](${input.fundingTxUrl}) · Expires ${formatDate(input.expiresAt)}`,
+  ]);
+}
+
+export interface PendingAcceptInput {
+  bountyId: string;
+  amountUsdc: bigint;
+  funderLogin: string;
+  settingsUrl: string;
+}
+
+/** Funded by someone who is not the maintainer, so the maintainer decides first. */
+export function pendingAcceptComment(input: PendingAcceptInput): RenderedComment {
+  return render(input.bountyId, "pending-accept", [
+    `### 💰 ${formatUsdc(input.amountUsdc)} offered for this issue`,
+    "",
+    `@${input.funderLogin} escrowed a bounty on Arc. Because the reward is paid out when a maintainer merges, a maintainer has to accept it before anyone can claim it.`,
+    "",
+    "Maintainers: comment `/accept` to open it for work, or accept it from " +
+      `[repository settings](${input.settingsUrl}).`,
+  ]);
+}
+
+export interface ClaimedInput {
+  bountyId: string;
+  login: string;
+  issueNumber: number;
+  claimExpiresAt: Date;
+}
+
+export function claimedComment(input: ClaimedInput): RenderedComment {
+  return render(input.bountyId, "claimed", [
+    `✅ @${input.login} claimed this bounty.`,
+    "",
+    `Open a pull request whose body contains \`Fixes #${input.issueNumber}\` and the payout runs automatically when it is merged. The claim lapses ${formatDate(input.claimExpiresAt)} if no pull request is open by then.`,
+    "",
+    "Anyone else may still claim and submit — the first merged pull request is paid.",
+  ]);
+}
+
+export interface NeedsPayoutInput {
+  bountyId: string;
+  login: string;
+  payoutUrl: string;
+}
+
+export function needsPayoutAddressComment(input: NeedsPayoutInput): RenderedComment {
+  return render(input.bountyId, "needs-payout", [
+    `@${input.login} — there is nowhere to send the USDC yet.`,
+    "",
+    `Add a payout address at [${input.payoutUrl}](${input.payoutUrl}), then comment \`/claim\` again. It takes a minute and you only do it once.`,
+  ]);
+}
+
+export function unclaimedComment(bountyId: string, login: string): RenderedComment {
+  return render(bountyId, "unclaimed", [`@${login} released this bounty. It is open again.`]);
+}
+
+export function aiNotAllowedComment(bountyId: string, login: string): RenderedComment {
+  return render(bountyId, "ai-not-allowed", [
+    `@${login} — this repository does not accept AI-authored contributions, so registered agents cannot claim its bounties.`,
+    "",
+    "Human contributors are welcome to comment `/claim`.",
+  ]);
+}
+
+export interface LinkedInput {
+  bountyId: string;
+  issueNumber: number;
+  amountUsdc: bigint;
+  contributorUsdc: bigint;
+  maintainerUsdc: bigint;
+  bountyUrl: string;
+}
+
+/** Posted on the pull request, so a reviewer sees the money before they merge. */
+export function pullRequestLinkedComment(input: LinkedInput): RenderedComment {
+  const reward =
+    input.maintainerUsdc > 0n ? `\n- Reviewer: **${formatUsdc(input.maintainerUsdc)}**` : "";
+  return render(input.bountyId, "linked", [
+    `### Linked to the ${formatUsdc(input.amountUsdc)} bounty on #${input.issueNumber}`,
+    "",
+    "Merging this pull request releases escrow on Arc:",
+    `- Contributor: **${formatUsdc(input.contributorUsdc)}**${reward}`,
+    "",
+    `Settlement takes a few seconds and needs no further action. [Bounty details](${input.bountyUrl})`,
+  ]);
+}
+
+export interface SettledInput {
+  bountyId: string;
+  login: string;
+  contributorUsdc: bigint;
+  maintainerUsdc: bigint;
+  maintainerLogin: string | null;
+  txUrl: string;
+  seconds: number;
+}
+
+/** The comment the whole product exists to post. */
+export function settledComment(input: SettledInput): RenderedComment {
+  const reward =
+    input.maintainerUsdc > 0n && input.maintainerLogin
+      ? ` and ${formatUsdc(input.maintainerUsdc)} to @${input.maintainerLogin} for the review`
+      : "";
+  return render(input.bountyId, "settled", [
+    `### 🎉 Paid ${formatUsdc(input.contributorUsdc)} to @${input.login}${reward}`,
+    "",
+    `Settled on Arc in ${input.seconds.toFixed(1)}s, in one transaction, in USDC.`,
+    "",
+    `[View the settlement](${input.txUrl})`,
+  ]);
+}
+
+export function settlementFailedComment(bountyId: string, detail: string): RenderedComment {
+  return render(bountyId, "failed", [
+    "⚠️ The payout for this bounty did not go through.",
+    "",
+    `The escrow is untouched and the merge stands. ${detail}`,
+  ]);
+}
+
+export function expiredComment(
+  bountyId: string,
+  amountUsdc: bigint,
+  reclaimUrl: string,
+): RenderedComment {
+  return render(bountyId, "expired", [
+    `This ${formatUsdc(amountUsdc)} bounty expired with no merged pull request.`,
+    "",
+    `The funder can [reclaim the escrow](${reclaimUrl}) at any time.`,
+  ]);
+}
+
+export interface StatusInput {
+  bountyId: string;
+  status: string;
+  amountUsdc: bigint;
+  claimants: string[];
+  bountyUrl: string;
+  txUrl: string | null;
+}
+
+/** The reply to `/status`. Deliberately terse: it is read in a busy issue thread. */
+export function statusComment(input: StatusInput): RenderedComment {
+  const claims =
+    input.claimants.length > 0
+      ? input.claimants.map((login) => `@${login}`).join(", ")
+      : "nobody yet";
+  const lines = [
+    `**${formatUsdc(input.amountUsdc)} · ${input.status}**`,
+    "",
+    `Claimed by: ${claims}`,
+    `[Bounty details](${input.bountyUrl})`,
+  ];
+  if (input.txUrl) lines.push(`[Settlement transaction](${input.txUrl})`);
+  return render(input.bountyId, "status", lines);
+}
+
+function formatDate(date: Date): string {
+  return `${date.toISOString().replace("T", " ").slice(0, 16)} UTC`;
+}
