@@ -1,5 +1,5 @@
 import { zValidator } from "@hono/zod-validator";
-import { txUrl } from "@proofwork/chain";
+import { bpsOf, txUrl } from "@proofwork/chain";
 import { Hono } from "hono";
 import { getAddress, verifyMessage } from "viem";
 import { z } from "zod";
@@ -127,7 +127,12 @@ userRoutes.get("/me/settlements", internalOnly, async (c) => {
     settlements: listings.map(({ settlement, bounty, repo }) => ({
       id: settlement.id,
       status: settlement.status,
+      /** The whole budget, of which the reviewing maintainer takes a share. */
       amountUsdc: String(settlement.amountUsdc),
+      /** What actually landed at this person's payout address. */
+      receivedUsdc: String(
+        settlement.amountUsdc - bpsOf(settlement.amountUsdc, bounty.maintainerRewardBps),
+      ),
       repo: repo.fullName,
       issueNumber: bounty.issueNumber,
       txUrl: settlement.txHash ? txUrl(settlement.txHash, c.env) : null,

@@ -25,6 +25,8 @@ interface SettlementRow {
   id: string;
   status: string;
   amountUsdc: string;
+  /** What reached this person, after the reviewing maintainer's share. */
+  receivedUsdc: string;
   repo: string;
   issueNumber: number;
   txUrl: string | null;
@@ -61,7 +63,7 @@ export default async function MePage() {
 
   const earned = settlements.settlements
     .filter((row) => row.status === "complete")
-    .reduce((total, row) => total + BigInt(row.amountUsdc), 0n);
+    .reduce((total, row) => total + BigInt(row.receivedUsdc), 0n);
 
   return (
     <>
@@ -140,7 +142,7 @@ export default async function MePage() {
                     ) : null}
                   </p>
                 </div>
-                <span className="tabular font-mono text-paid">{usdc(row.amountUsdc)}</span>
+                <span className="tabular font-mono text-paid">{usdc(row.receivedUsdc)}</span>
               </li>
             ))}
           </Rows>
