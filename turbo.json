@@ -34,7 +34,8 @@
     "CIRCLE_VERIFIER_ADDRESS",
     "CIRCLE_TREASURY_ADDRESS",
     "AUTH_GITHUB_ID",
-    "AUTH_GITHUB_SECRET"
+    "AUTH_GITHUB_SECRET",
+    "GITHUB_WEBHOOK_PROXY_URL"
   ],
   "globalDependencies": [
     "packages/config/**"

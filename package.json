@@ -24,7 +24,8 @@
     "circle:setup": "bun run scripts/circle-setup.ts",
     "contracts:deploy:mainnet": "bun run scripts/deploy-contracts.ts mainnet",
     "github:sync": "bun run scripts/sync-installations.ts",
-    "dev:vars": "bun run scripts/dev-vars.ts"
+    "dev:vars": "bun run scripts/dev-vars.ts",
+    "dev:webhooks": "bun run scripts/dev-webhooks.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.12",
@@ -37,6 +38,7 @@
     "@proofwork/github": "workspace:*",
     "@types/bun": "^1.4.1",
     "drizzle-kit": "^0.31.10",
+    "smee-client": "^5.0.0",
     "turbo": "^2.10.12",
     "typescript": "5.9.3",
     "vitest": "^5.0.0",
