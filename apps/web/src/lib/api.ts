@@ -1,4 +1,5 @@
 import "server-only";
+import { getCloudflareContext } from "@opennextjs/cloudflare";
 
 /**
  * The one place the web app talks to the API.
@@ -23,8 +24,39 @@ export class ApiError extends Error {
   }
 }
 
+const DEFAULT_API_URL = "http://localhost:8787";
+
 export function apiBaseUrl(): string {
-  return (process.env.PUBLIC_API_URL ?? "http://localhost:8787").replace(/\/+$/, "");
+  // `||`, not `??`: an unset Worker variable arrives as an empty string, and a base URL
+  // of "" turns every call into a relative one against the web app itself.
+  return normalise(process.env.PUBLIC_API_URL || DEFAULT_API_URL);
+}
+
+function normalise(url: string): string {
+  return url.replace(/\/+$/, "");
+}
+
+/**
+ * On Cloudflare the API is reached through a service binding rather than over the public
+ * internet: a Worker calling its own account's `workers.dev` hostname does not route the
+ * way you would expect, and the binding is faster and never leaves the edge anyway.
+ * Outside Workers — `next dev` — there is no binding and ordinary fetch is used.
+ */
+interface Connection {
+  send: typeof fetch;
+  baseUrl: string;
+}
+
+async function connect(): Promise<Connection> {
+  try {
+    const context = await getCloudflareContext({ async: true });
+    const env = context.env as { API?: { fetch: typeof fetch }; PUBLIC_API_URL?: string };
+    const baseUrl = normalise(env.PUBLIC_API_URL || process.env.PUBLIC_API_URL || DEFAULT_API_URL);
+    return { send: env.API ? env.API.fetch.bind(env.API) : fetch, baseUrl };
+  } catch {
+    // No Cloudflare context: running under `next dev`.
+    return { send: fetch, baseUrl: apiBaseUrl() };
+  }
 }
 
 export interface ApiOptions extends Omit<RequestInit, "body"> {
@@ -38,7 +70,9 @@ export interface ApiOptions extends Omit<RequestInit, "body"> {
 export async function api<T>(path: string, options: ApiOptions = {}): Promise<T> {
   const { actingUserId, body, revalidate, headers, ...rest } = options;
 
-  const response = await fetch(`${apiBaseUrl()}${path}`, {
+  const { send, baseUrl } = await connect();
+  const url = `${baseUrl}${path}`;
+  const response = await send(url, {
     ...rest,
     headers: {
       accept: "application/json",
@@ -52,13 +86,20 @@ export async function api<T>(path: string, options: ApiOptions = {}): Promise<T>
   });
 
   if (!response.ok) {
-    const detail = (await response.json().catch(() => null)) as {
-      error?: { code?: string; message?: string };
-    } | null;
+    // The body is read as text first: a failure from in front of the API — an edge 404,
+    // a proxy error page — is not JSON, and losing it makes these impossible to debug.
+    const body = await response.text().catch(() => "");
+    let detail: { error?: { code?: string; message?: string } } | undefined;
+    try {
+      detail = JSON.parse(body);
+    } catch {
+      detail = undefined;
+    }
+
     throw new ApiError(
       response.status,
       detail?.error?.code ?? "request_failed",
-      detail?.error?.message ?? `${path} failed with ${response.status}`,
+      detail?.error?.message ?? `${url} failed with ${response.status}: ${body.slice(0, 200)}`,
     );
   }
 

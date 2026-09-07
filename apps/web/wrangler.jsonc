@@ -6,8 +6,10 @@
   "compatibility_flags": ["nodejs_compat"],
   "assets": { "directory": ".open-next/assets", "binding": "ASSETS" },
   "observability": { "enabled": true },
+  // The API is called through a binding, not over the public internet.
+  "services": [{ "binding": "API", "service": "proofwork-api" }],
   "vars": {
-    "PUBLIC_API_URL": "http://localhost:8787"
+    "PUBLIC_API_URL": "https://proofwork-api.0xpankaj.workers.dev"
   }
   // Secrets are set with `wrangler secret put`, never committed:
   //   AUTH_SECRET, AUTH_GITHUB_ID, AUTH_GITHUB_SECRET, INTERNAL_API_KEY

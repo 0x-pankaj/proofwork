@@ -16,6 +16,9 @@ interface GitHubProfile {
 }
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  // The app runs behind Cloudflare rather than Vercel, so Auth.js needs to be told the
+  // forwarded host is the real one.
+  trustHost: true,
   providers: [
     GitHub({
       clientId: process.env.AUTH_GITHUB_ID,
