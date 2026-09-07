@@ -70,6 +70,8 @@ export function proofworkJobsAddress(
   if (deployed) return deployed as Address;
 
   throw new Error(
-    `ProofworkJobs is not deployed on ${network}. Deploy it, or set PROOFWORK_JOBS_ADDRESS_${network.toUpperCase()}.`,
+    `ProofworkJobs is not deployed on ${network}. Run "bun run contracts:deploy:${network}" to ` +
+      `write the deployment record, or set PROOFWORK_JOBS_ADDRESS_${network.toUpperCase()} to ` +
+      "point at an existing deployment.",
   );
 }
