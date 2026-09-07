@@ -20,6 +20,9 @@ import type { Store } from "./store";
  * another. The reconciler makes the chain win.
  */
 
+/** The hourly sweep; anything else on the schedule is the chain reconciler. */
+export const HOURLY_SWEEP = "0 * * * *";
+
 /** Arc produces blocks quickly, so a minute of catching up is a small window. */
 export const MAX_BLOCK_SPAN = 2_000n;
 

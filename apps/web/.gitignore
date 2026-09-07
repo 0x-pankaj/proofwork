@@ -2,3 +2,4 @@
 .open-next/
 next-env.d.ts.bak
 .wrangler/
+next-env.d.ts
