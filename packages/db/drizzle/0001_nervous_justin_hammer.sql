@@ -1,0 +1,1 @@
+ALTER TABLE "repos" ADD COLUMN "installed" boolean DEFAULT true NOT NULL;

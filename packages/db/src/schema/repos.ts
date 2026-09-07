@@ -56,6 +56,12 @@ export const repos = pgTable(
       .notNull()
       .references((): AnyPgColumn => installations.id, { onDelete: "cascade" }),
     private: boolean().notNull().default(false),
+    /**
+     * Whether the app is currently installed on this repository. Uninstalling sets this
+     * false rather than deleting the row: settled bounties are the product's history and
+     * a maintainer who reinstalls should get it back, not a blank slate.
+     */
+    installed: boolean().notNull().default(true),
     evaluatorMode: evaluatorMode().notNull().default("proofwork"),
     /** The account paid for reviewing work here. */
     maintainerUserId: uuid().references((): AnyPgColumn => users.id, { onDelete: "set null" }),
