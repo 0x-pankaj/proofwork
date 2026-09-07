@@ -4,6 +4,7 @@ import type { GitHubClient, RepoRef } from "@proofwork/github";
 import express, { type Express, type NextFunction, type Request, type Response } from "express";
 import { type Env, facilitatorUrl, required } from "./env";
 import { FIT_PRICE_USDC, fitHandler } from "./fit";
+import { openapiDocument } from "./openapi";
 import { recording } from "./payments";
 import { price } from "./price";
 import { REVIEW_PRICE_USDC, reviewHandler } from "./review";
@@ -42,6 +43,16 @@ export function createApp(deps: AppDeps): Express {
   /** Liveness. The marketplace listing stays up only while this answers. */
   app.get("/health", (_req, res) => {
     res.json({ ok: true, service: "proofwork-x402", network: env.ARC_NETWORK ?? "testnet" });
+  });
+
+  /** What the marketplace and any agent read to find out what is for sale here. */
+  app.get("/openapi.json", (req, res) => {
+    res.json(
+      openapiDocument({
+        baseUrl: env.PUBLIC_X402_URL || `${req.protocol}://${req.get("host") ?? "localhost"}`,
+        network: env.ARC_NETWORK ?? "testnet",
+      }),
+    );
   });
 
   /** Whether a bounty is worth claiming, for a twentieth of a cent. */

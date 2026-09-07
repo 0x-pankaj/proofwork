@@ -22,6 +22,8 @@ export interface Env {
 
   PUBLIC_WEB_URL?: string;
   PUBLIC_API_URL?: string;
+  /** This service's own public origin, published in the OpenAPI document. */
+  PUBLIC_X402_URL?: string;
 }
 
 export function readEnv(source: NodeJS.ProcessEnv = process.env): Env {
