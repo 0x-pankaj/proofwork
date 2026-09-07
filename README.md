@@ -8,6 +8,48 @@ will review it. A human or an agent claims the issue and opens a pull request. T
 the proof: one transaction pays the contributor, pays the maintainer for the review, and
 takes the protocol fee, with sub-second finality and USDC as the gas token.
 
+## It works, and here is the receipt
+
+| | |
+| --- | --- |
+| Bounty board | https://proofwork-web.0xpankaj.workers.dev |
+| API | https://proofwork-api.0xpankaj.workers.dev |
+| Escrow contract | [`0x3Bc728A813a7aBe0cB898fd63967525e92353D85`](https://testnet.arcscan.app/address/0x3Bc728A813a7aBe0cB898fd63967525e92353D85) on Arc testnet, source verified |
+
+A real bounty on this repository was funded, claimed, fixed, merged and paid:
+
+- [Issue #1](https://github.com/0x-pankaj/proofwork/issues/1) — $2.00 escrowed, bot comments the terms
+- [Pull request #2](https://github.com/0x-pankaj/proofwork/pull/2) — `Fixes #1`, bot comments what merging pays
+- [Settlement](https://testnet.arcscan.app/tx/0x7ea90960deeebe2dd0e8f40650a16dc527a254a04637be5eb85e8ef3b9897b5b) — $1.70 to the contributor, $0.30 to the maintainer, $0.06 protocol fee, **one transaction**
+
+Nobody approved a payout. The merge was the approval.
+
+## The loop
+
+1. A funder picks an open issue and escrows USDC. Two signatures from their own wallet:
+   `approve`, then `createAndFund`. Proofwork never holds the funder's key.
+2. The bot comments the terms on the issue. A contributor — human or agent — comments
+   `/claim`. GitHub has already authenticated them, so the comment doubles as proof they
+   control the login.
+3. They open a pull request whose body says `Fixes #N`. The bot comments what merging pays.
+4. A maintainer merges. The merge webhook checks every guard — the pull request closes the
+   funded issue, its author holds an active claim, the base branch is the one the repository
+   ships from — and only then does the verifier wallet call `settle`.
+5. Three transfers, one transaction, a few seconds. The bot posts the receipt.
+
+Repository policy is enforced before work starts, not after: a maintainer decides whether
+AI-assisted contributions are welcome, whether they must be disclosed, what an agent stakes
+to hold a claim, and how long a claim survives without a pull request.
+
+## Circle products used
+
+| Product | Where |
+| --- | --- |
+| Arc | The chain. USDC is the gas token; escrow, settlement and refunds all live here. |
+| Developer-Controlled Wallets | The verifier wallet that calls `settle`, and the treasury that receives fees. `packages/circle` talks to the API over `fetch` and Web Crypto, so it runs on Cloudflare Workers. |
+| Compliance Engine | The payout address is screened before settlement. Without the entitlement, Circle's own transaction screening is the backstop and a denial is handled as a failed settlement. |
+| Faucet | Testnet USDC for the deployer and the verifier wallet. |
+
 ## Why this exists
 
 Agents made code cheap and review expensive. Open bounty boards are full of listings that
@@ -81,15 +123,21 @@ as part of the same command.
 
 ```
 apps/
-  web/       Next.js — bounty board, funding flow, maintainer settings
-  api/       Hono on Cloudflare Workers — GitHub webhooks, REST API, cron
-  x402/      Express — paid endpoints via Circle Nanopayments
-  agent/     Reference agent that claims, fixes and gets paid
+  web/       Next.js 16 on Cloudflare — board, bounty page, funding flow, maintainer settings
+  api/       Hono on Cloudflare Workers — GitHub webhooks, REST API, settlement, cron
 packages/
   chain/     Networks, addresses, ABIs. The only place with chain configuration.
-  contracts/ Foundry: ProofworkJobs, tests, deploy script
+  contracts/ Foundry: ProofworkJobs, 35 tests, deploy script
+  core/      Domain logic with no I/O: state machine, hashing, settlement orchestrator
+  db/        Drizzle schema, migrations, Neon client, repositories
+  circle/    Circle wallets and compliance over fetch
+  github/    App auth, webhook verification, parsers, comment templates
   config/    Shared TypeScript and Biome configuration
 ```
+
+The settlement orchestrator in `packages/core` has no database, no HTTP and no chain client
+in it: everything the outside world does is behind an interface. That is what makes the code
+path that moves money testable end to end without a network.
 
 ## Local development
 
@@ -97,10 +145,24 @@ packages/
 bun install
 bun run check              # typecheck, lint and unit tests across the monorepo
 bun run contracts:test     # forge test
-bun run contracts:build    # forge build, then regenerate the TypeScript ABI
+
+cp .env.example .env       # then fill it in
+bun run db:migrate         # apply the schema to Neon
+bun run dev:vars           # write .dev.vars for both Workers from .env
 ```
 
-Requires Bun 1.2+, Node 22 for the Circle SDKs, and [Foundry](https://getfoundry.sh).
+Running the whole loop against Arc testnet:
+
+```bash
+bun run --cwd apps/api dev     # the API on :8787
+bun run --cwd apps/web dev     # the web app on :3000
+bun run dev:webhooks           # relay GitHub deliveries to the local API
+bun run github:sync            # pull installations and repositories into the database
+bun run seed:bounty            # fund a real bounty through the API
+bun run e2e:testnet            # fund and settle on chain, asserting all three balances
+```
+
+Requires Bun 1.2+ and [Foundry](https://getfoundry.sh).
 
 ## Network
 
