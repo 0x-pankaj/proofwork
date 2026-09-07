@@ -18,5 +18,9 @@
   "devDependencies": {
     "@proofwork/config": "workspace:*",
     "@types/node": "^22.10.0"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./cli": "./src/cli.ts"
   }
 }

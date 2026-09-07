@@ -1,0 +1,20 @@
+{
+  "name": "@proofwork/agent",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "bun src/index.ts",
+    "typecheck": "tsc --noEmit",
+    "lint": "biome check .",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@proofwork/chain": "workspace:*",
+    "@proofwork/skill": "workspace:*"
+  },
+  "devDependencies": {
+    "@proofwork/config": "workspace:*",
+    "@types/node": "^22.10.0"
+  }
+}
