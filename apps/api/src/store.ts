@@ -6,18 +6,25 @@ import {
   activeClaimsFor,
   agentByGithubLogin,
   type Bounty,
+  type BountyFilter,
+  type BountyListing,
   bountyById,
+  bountyWithRepo,
   type Claim,
   type ClaimInput,
   claimBounty,
   claimById,
   completeBounty,
+  confirmBountyFunded,
+  createBounty,
   type Database,
   type Installation,
   type InstallationInput,
   installationByGithubId,
+  listBounties,
   loseOtherClaims,
   type MergeInput,
+  markBountyFunding,
   markInstallationReposUninstalled,
   markReposUninstalled,
   markSettlementComplete,
@@ -27,6 +34,7 @@ import {
   markSubmissionMerged,
   mergedSubmissionFor,
   moveBountyStatus,
+  type NewBountyInput,
   openSettlement,
   openSubmissionsFor,
   type RepositoryInput,
@@ -80,6 +88,14 @@ export interface Store {
 
   activeBountyForIssue(repoId: string, issueNumber: number): Promise<Bounty | undefined>;
   bountyById(id: string): Promise<Bounty | undefined>;
+  bountyWithRepo(id: string): Promise<BountyListing | undefined>;
+  listBounties(filter: BountyFilter): Promise<BountyListing[]>;
+  createBounty(input: NewBountyInput): Promise<Bounty>;
+  markBountyFunding(id: string, createTxHash: string): Promise<boolean>;
+  confirmBountyFunded(
+    id: string,
+    input: { jobId: bigint; createTxHash: string; autoAccept: boolean },
+  ): Promise<boolean>;
   moveBountyStatus(id: string, from: Bounty["status"], to: Bounty["status"]): Promise<boolean>;
   acceptBounty(id: string): Promise<boolean>;
   completeBounty(id: string, input: { txHash: string; circleTxId: string }): Promise<boolean>;
@@ -140,6 +156,11 @@ export function databaseStore(db: Database): Store {
 
     activeBountyForIssue: (repoId, issueNumber) => activeBountyForIssue(db, repoId, issueNumber),
     bountyById: (id) => bountyById(db, id),
+    bountyWithRepo: (id) => bountyWithRepo(db, id),
+    listBounties: (filter) => listBounties(db, filter),
+    createBounty: (input) => createBounty(db, input),
+    markBountyFunding: (id, createTxHash) => markBountyFunding(db, id, createTxHash),
+    confirmBountyFunded: (id, input) => confirmBountyFunded(db, id, input),
     moveBountyStatus: (id, from, to) => moveBountyStatus(db, id, from, to),
     acceptBounty: (id) => acceptBounty(db, id),
     completeBounty: (id, input) => completeBounty(db, id, input),

@@ -11,12 +11,14 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@hono/zod-validator": "^0.9.1",
     "@proofwork/chain": "workspace:*",
     "@proofwork/circle": "workspace:*",
     "@proofwork/core": "workspace:*",
     "@proofwork/db": "workspace:*",
     "@proofwork/github": "workspace:*",
-    "hono": "^4.13.7"
+    "hono": "^4.13.7",
+    "zod": "^4.5.4"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20260907.1",

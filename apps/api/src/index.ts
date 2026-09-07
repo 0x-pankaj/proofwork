@@ -12,12 +12,14 @@ import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 import { type Env, required } from "./env";
 import { fail } from "./http";
+import { type BountyVariables, bountyRoutes } from "./routes/bounties";
 import { db } from "./services";
+import { databaseStore, type Store } from "./store";
 import { githubDispatcher } from "./webhooks/dispatch";
 import { receiveGitHubWebhook } from "./webhooks/github";
 import { databaseWebhookStore } from "./webhooks/store";
 
-const app = new Hono<{ Bindings: Env }>();
+const app = new Hono<{ Bindings: Env; Variables: BountyVariables }>();
 
 app.use("*", logger());
 
@@ -28,6 +30,11 @@ app.use("*", logger());
  */
 app.use("*", async (c, next) => {
   setChainEnv(c.env);
+  let store: Store | undefined;
+  c.set("store", () => {
+    store ??= databaseStore(db(c.env));
+    return store;
+  });
   await next();
 });
 
@@ -58,6 +65,8 @@ app.get("/v1/config", (c) => {
     explorer: network === "testnet" ? ARC_TESTNET_EXPLORER_URL : c.env.ARC_MAINNET_EXPLORER_URL,
   });
 });
+
+app.route("/v1/bounties", bountyRoutes);
 
 /**
  * GitHub deliveries. Verified against the app's webhook secret, written down, then acted

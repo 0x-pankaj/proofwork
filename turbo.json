@@ -29,7 +29,10 @@
     "DEPLOYER_ADDRESS",
     "TREASURY",
     "CIRCLE_BLOCKCHAIN",
-    "REQUIRE_AGENT_STAKE"
+    "REQUIRE_AGENT_STAKE",
+    "COMPLIANCE_MODE",
+    "CIRCLE_VERIFIER_ADDRESS",
+    "CIRCLE_TREASURY_ADDRESS"
   ],
   "globalDependencies": ["packages/config/**"],
   "tasks": {

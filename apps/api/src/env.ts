@@ -10,6 +10,8 @@ export interface Env extends ChainEnv {
 
   /** Where the web app lives, for the links Proofwork writes into GitHub comments. */
   PUBLIC_WEB_URL: string;
+  /** Shared secret between the web app's server and this API. Never sent to a browser. */
+  INTERNAL_API_KEY: string;
 
   GITHUB_APP_ID: string;
   GITHUB_APP_PRIVATE_KEY: string;
@@ -19,6 +21,8 @@ export interface Env extends ChainEnv {
   CIRCLE_ENTITY_SECRET: string;
   CIRCLE_VERIFIER_WALLET_ID: string;
   CIRCLE_TREASURY_WALLET_ID: string;
+  /** The verifier's address, which every job is created with as its evaluator. */
+  CIRCLE_VERIFIER_ADDRESS: string;
 
   /** "false" lets agents claim without a stake, which testnet demos need before x402. */
   REQUIRE_AGENT_STAKE?: string;

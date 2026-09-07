@@ -283,6 +283,60 @@ export function createFakeStore(seed: FakeStoreSeed | RepoWithInstallation[] = {
       return store.bounties.get(id);
     },
 
+    async bountyWithRepo(id) {
+      const bounty = store.bounties.get(id);
+      if (!bounty) return undefined;
+      const found = await store.repoById(bounty.repoId);
+      return found ? { bounty, repo: found.repo } : undefined;
+    },
+
+    async listBounties(filter) {
+      const listings = [];
+      for (const bounty of store.bounties.values()) {
+        if (filter.status && bounty.status !== filter.status) continue;
+        if (filter.repoId && bounty.repoId !== filter.repoId) continue;
+        if (filter.minAmountUsdc !== undefined && bounty.amountUsdc < filter.minAmountUsdc) {
+          continue;
+        }
+        const found = await store.repoById(bounty.repoId);
+        if (found) listings.push({ bounty, repo: found.repo });
+      }
+      return listings;
+    },
+
+    async createBounty(input) {
+      const bounty = fakeBounty({
+        ...input,
+        id: `bounty-${store.bounties.size + 1}`,
+        status: "draft",
+        jobId: null,
+        createTxHash: null,
+        tags: input.tags ?? [],
+      });
+      store.bounties.set(bounty.id, bounty);
+      return bounty;
+    },
+
+    async markBountyFunding(id, createTxHash) {
+      const bounty = store.bounties.get(id);
+      if (bounty?.status !== "draft") return false;
+      store.bounties.set(id, { ...bounty, status: "funding", createTxHash });
+      return true;
+    },
+
+    async confirmBountyFunded(id, input) {
+      const bounty = store.bounties.get(id);
+      if (bounty?.status !== "draft" && bounty?.status !== "funding") return false;
+      store.bounties.set(id, {
+        ...bounty,
+        status: input.autoAccept ? "open" : "pending_accept",
+        jobId: input.jobId,
+        createTxHash: input.createTxHash,
+        acceptedAt: input.autoAccept ? new Date() : null,
+      });
+      return true;
+    },
+
     async acceptBounty(id) {
       const bounty = store.bounties.get(id);
       if (bounty?.status !== "pending_accept") return false;
