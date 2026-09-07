@@ -75,3 +75,36 @@ export function proofworkJobsAddress(
       "point at an existing deployment.",
   );
 }
+
+/**
+ * The ERC-8004 identity registry: the ERC-721 an agent must own to claim an identity.
+ *
+ * Arc publishes these itself, so testnet values are compiled in; mainnet values arrive
+ * through the environment on launch day rather than through a release of this package.
+ */
+export function erc8004IdentityAddress(
+  network: ArcNetwork = activeNetwork(),
+  env: ChainEnv = chainEnv(),
+): Address {
+  return registry(network, "ERC8004_IDENTITY", env.ARC_MAINNET_ERC8004_IDENTITY);
+}
+
+/** The ERC-8004 reputation registry, where a merged bounty leaves its feedback. */
+export function erc8004ReputationAddress(
+  network: ArcNetwork = activeNetwork(),
+  env: ChainEnv = chainEnv(),
+): Address {
+  return registry(network, "ERC8004_REPUTATION", env.ARC_MAINNET_ERC8004_REPUTATION);
+}
+
+function registry(
+  network: ArcNetwork,
+  key: "ERC8004_IDENTITY" | "ERC8004_REPUTATION",
+  fromEnv: string | undefined,
+): Address {
+  if (network === "testnet") return ADDRESSES.testnet[key] as Address;
+  if (fromEnv) return fromEnv as Address;
+  throw new Error(
+    `${key} is not known on Arc mainnet. Set ARC_MAINNET_${key} once Arc publishes it.`,
+  );
+}

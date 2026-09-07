@@ -16,6 +16,9 @@ export interface ChainEnv {
   PROOFWORK_JOBS_ADDRESS_MAINNET?: string | undefined;
   /** Circle's blockchain id for Arc mainnet, published on launch day. */
   CIRCLE_BLOCKCHAIN_MAINNET?: string | undefined;
+  /** ERC-8004 registries on Arc mainnet, published on launch day. */
+  ARC_MAINNET_ERC8004_IDENTITY?: string | undefined;
+  ARC_MAINNET_ERC8004_REPUTATION?: string | undefined;
 }
 
 let injected: ChainEnv | undefined;

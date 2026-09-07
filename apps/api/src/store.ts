@@ -1,11 +1,16 @@
 import {
   type Agent,
+  type AgentRecord,
   acceptBounty,
   activeBountyForIssue,
   activeClaimBy,
   activeClaimsFor,
   activeClaimsWithPolicy,
+  agentByApiKeyHash,
   agentByGithubLogin,
+  agentById,
+  agentByWalletAddress,
+  agentRecord,
   type Bounty,
   type BountyFilter,
   type BountyListing,
@@ -22,6 +27,7 @@ import {
   claimsForUser,
   completeBounty,
   confirmBountyFunded,
+  createAgent,
   createBounty,
   type Database,
   expireBounties,
@@ -43,6 +49,7 @@ import {
   markSubmissionMerged,
   mergedSubmissionFor,
   moveBountyStatus,
+  type NewAgent,
   type NewBountyInput,
   openSettlement,
   openSubmissionsFor,
@@ -62,6 +69,7 @@ import {
   type StaleClaim,
   type Submission,
   type SubmissionInput,
+  setAgentIdentity,
   setPayoutAddress,
   setRepoSettings,
   settleClaim,
@@ -107,6 +115,15 @@ export interface Store {
   userById(id: string): Promise<User | undefined>;
   setPayoutAddress(userId: string, payoutAddress: string): Promise<void>;
   agentByGithubLogin(login: string): Promise<Agent | undefined>;
+  agentById(id: string): Promise<Agent | undefined>;
+  agentByWalletAddress(walletAddress: string): Promise<Agent | undefined>;
+  agentByApiKeyHash(hash: string): Promise<Agent | undefined>;
+  createAgent(input: NewAgent): Promise<Agent>;
+  setAgentIdentity(
+    id: string,
+    input: { erc8004AgentId: bigint | null; metadataUri: string | null },
+  ): Promise<void>;
+  agentRecord(agentId: string): Promise<AgentRecord>;
 
   activeBountyForIssue(repoId: string, issueNumber: number): Promise<Bounty | undefined>;
   bountyById(id: string): Promise<Bounty | undefined>;
@@ -195,6 +212,12 @@ export function databaseStore(db: Database): Store {
     userById: (id) => userById(db, id),
     setPayoutAddress: (userId, payoutAddress) => setPayoutAddress(db, userId, payoutAddress),
     agentByGithubLogin: (login) => agentByGithubLogin(db, login),
+    agentById: (id) => agentById(db, id),
+    agentByWalletAddress: (walletAddress) => agentByWalletAddress(db, walletAddress),
+    agentByApiKeyHash: (hash) => agentByApiKeyHash(db, hash),
+    createAgent: (input) => createAgent(db, input),
+    setAgentIdentity: (id, input) => setAgentIdentity(db, id, input),
+    agentRecord: (agentId) => agentRecord(db, agentId),
 
     activeBountyForIssue: (repoId, issueNumber) => activeBountyForIssue(db, repoId, issueNumber),
     bountyById: (id) => bountyById(db, id),

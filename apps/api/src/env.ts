@@ -10,6 +10,8 @@ export interface Env extends ChainEnv {
 
   /** Where the web app lives, for the links Proofwork writes into GitHub comments. */
   PUBLIC_WEB_URL: string;
+  /** This API's own public origin, for the URIs it publishes on chain. */
+  PUBLIC_API_URL?: string;
   /** Shared secret between the web app's server and this API. Never sent to a browser. */
   INTERNAL_API_KEY: string;
 

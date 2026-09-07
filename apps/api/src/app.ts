@@ -12,7 +12,8 @@ import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 import { type Env, required } from "./env";
 import { fail } from "./http";
-import { type BountyVariables, bountyRoutes } from "./routes/bounties";
+import { type AgentVariables, agentRoutes } from "./routes/agents";
+import { bountyRoutes } from "./routes/bounties";
 import { repoRoutes } from "./routes/repos";
 import { userRoutes } from "./routes/users";
 import { db, github } from "./services";
@@ -21,7 +22,7 @@ import { githubDispatcher } from "./webhooks/dispatch";
 import { receiveGitHubWebhook } from "./webhooks/github";
 import { databaseWebhookStore } from "./webhooks/store";
 
-const app = new Hono<{ Bindings: Env; Variables: BountyVariables }>();
+const app = new Hono<{ Bindings: Env; Variables: AgentVariables }>();
 
 app.use("*", logger());
 
@@ -69,6 +70,7 @@ app.get("/v1/config", (c) => {
   });
 });
 
+app.route("/v1/agents", agentRoutes);
 app.route("/v1/bounties", bountyRoutes);
 app.route("/v1/repos", repoRoutes);
 app.route("/v1/users", userRoutes);

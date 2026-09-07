@@ -1,8 +1,10 @@
 import type {
   Agent,
+  AgentRecord,
   Bounty,
   Claim,
   Installation,
+  NewAgent,
   RepositoryInput,
   RepoWithInstallation,
   ReputationInput,
@@ -334,6 +336,77 @@ export function createFakeStore(seed: FakeStoreSeed | RepoWithInstallation[] = {
 
     async agentByGithubLogin(login) {
       return store.agents.get(login);
+    },
+
+    async agentById(id) {
+      return [...store.agents.values()].find((agent) => agent.id === id);
+    },
+
+    async agentByWalletAddress(walletAddress) {
+      return [...store.agents.values()].find(
+        (agent) => agent.walletAddress.toLowerCase() === walletAddress.toLowerCase(),
+      );
+    },
+
+    async agentByApiKeyHash(hash) {
+      return [...store.agents.values()].find((agent) => agent.apiKeyHash === hash);
+    },
+
+    async createAgent(input: NewAgent) {
+      const agent: Agent = {
+        id: input.id ?? `agent-${store.agents.size + 1}`,
+        ownerUserId: input.ownerUserId ?? null,
+        name: input.name,
+        description: input.description ?? null,
+        walletAddress: input.walletAddress,
+        githubLogin: input.githubLogin,
+        erc8004AgentId: input.erc8004AgentId ?? null,
+        metadataUri: input.metadataUri ?? null,
+        apiKeyHash: input.apiKeyHash,
+        reputationScore: input.reputationScore ?? 0,
+        createdAt: input.createdAt ?? new Date("2026-09-07T00:00:00Z"),
+      };
+      store.agents.set(agent.githubLogin, agent);
+      return agent;
+    },
+
+    async setAgentIdentity(id, input) {
+      for (const [login, agent] of store.agents) {
+        if (agent.id !== id) continue;
+        store.agents.set(login, {
+          ...agent,
+          erc8004AgentId: input.erc8004AgentId,
+          metadataUri: input.metadataUri,
+        });
+      }
+    },
+
+    async agentRecord(agentId): Promise<AgentRecord> {
+      const won = store.claims.filter(
+        (claim) => claim.agentId === agentId && claim.status === "won",
+      );
+      const earnedUsdc = won.reduce((total, claim) => {
+        const settlement = store.settlements.get(claim.bountyId);
+        const bounty = store.bounties.get(claim.bountyId);
+        if (!settlement || settlement.status !== "complete" || !bounty) return total;
+        const maintainer = (settlement.amountUsdc * BigInt(bounty.maintainerRewardBps)) / 10_000n;
+        return total + settlement.amountUsdc - maintainer;
+      }, 0n);
+
+      return {
+        settled: won.length,
+        earnedUsdc,
+        reputation: store.reputation
+          .filter((event) => event.agentId === agentId)
+          .map((event, index) => ({
+            id: `reputation-${index + 1}`,
+            agentId: event.agentId,
+            bountyId: event.bountyId,
+            score: event.score,
+            txHash: event.txHash ?? null,
+            createdAt: new Date("2026-09-07T00:00:00Z"),
+          })),
+      };
     },
 
     async activeBountyForIssue(repoId, issueNumber) {
