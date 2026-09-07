@@ -1,0 +1,14 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "proofwork-web",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2026-09-07",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": { "directory": ".open-next/assets", "binding": "ASSETS" },
+  "observability": { "enabled": true },
+  "vars": {
+    "PUBLIC_API_URL": "http://localhost:8787"
+  }
+  // Secrets are set with `wrangler secret put`, never committed:
+  //   AUTH_SECRET, AUTH_GITHUB_ID, AUTH_GITHUB_SECRET, INTERNAL_API_KEY
+}

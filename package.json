@@ -23,7 +23,8 @@
     "contracts:export": "bun run --cwd packages/contracts export",
     "circle:setup": "bun run scripts/circle-setup.ts",
     "contracts:deploy:mainnet": "bun run scripts/deploy-contracts.ts mainnet",
-    "github:sync": "bun run scripts/sync-installations.ts"
+    "github:sync": "bun run scripts/sync-installations.ts",
+    "dev:vars": "bun run scripts/dev-vars.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.12",
