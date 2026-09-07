@@ -51,3 +51,11 @@ export async function moveBountyStatus(
     .returning({ id: bounties.id });
   return updated.length > 0;
 }
+
+/**
+ * A maintainer opening a bounty for work. Returns false when it was not waiting for one,
+ * which is what makes a repeated `/accept` comment harmless.
+ */
+export async function acceptBounty(db: Database, id: string): Promise<boolean> {
+  return moveBountyStatus(db, id, "pending_accept", "open", { acceptedAt: new Date() });
+}

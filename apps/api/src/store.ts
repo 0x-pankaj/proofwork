@@ -1,5 +1,6 @@
 import {
   type Agent,
+  acceptBounty,
   activeBountyForIssue,
   activeClaimBy,
   activeClaimsFor,
@@ -20,6 +21,7 @@ import {
   type RepoWithInstallation,
   repoWithInstallationByGithubId,
   repoWithInstallationById,
+  stakeInUse,
   syncRepos,
   type User,
   type UserInput,
@@ -27,6 +29,8 @@ import {
   upsertUser,
   userByLogin,
   withdrawClaim,
+  type X402Payment,
+  x402PaymentById,
 } from "@proofwork/db";
 
 /**
@@ -53,11 +57,15 @@ export interface Store {
   activeBountyForIssue(repoId: string, issueNumber: number): Promise<Bounty | undefined>;
   bountyById(id: string): Promise<Bounty | undefined>;
   moveBountyStatus(id: string, from: Bounty["status"], to: Bounty["status"]): Promise<boolean>;
+  acceptBounty(id: string): Promise<boolean>;
 
   activeClaimsFor(bountyId: string): Promise<Claim[]>;
   activeClaimBy(bountyId: string, githubLogin: string): Promise<Claim | undefined>;
   claimBounty(input: ClaimInput): Promise<Claim>;
   withdrawClaim(bountyId: string, githubLogin: string): Promise<boolean>;
+
+  x402PaymentById(id: string): Promise<X402Payment | undefined>;
+  stakeInUse(paymentId: string): Promise<boolean>;
 }
 
 export function databaseStore(db: Database): Store {
@@ -80,10 +88,14 @@ export function databaseStore(db: Database): Store {
     activeBountyForIssue: (repoId, issueNumber) => activeBountyForIssue(db, repoId, issueNumber),
     bountyById: (id) => bountyById(db, id),
     moveBountyStatus: (id, from, to) => moveBountyStatus(db, id, from, to),
+    acceptBounty: (id) => acceptBounty(db, id),
 
     activeClaimsFor: (bountyId) => activeClaimsFor(db, bountyId),
     activeClaimBy: (bountyId, login) => activeClaimBy(db, bountyId, login),
     claimBounty: (input) => claimBounty(db, input),
     withdrawClaim: (bountyId, login) => withdrawClaim(db, bountyId, login),
+
+    x402PaymentById: (id) => x402PaymentById(db, id),
+    stakeInUse: (paymentId) => stakeInUse(db, paymentId),
   };
 }

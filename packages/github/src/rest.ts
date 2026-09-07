@@ -55,6 +55,14 @@ export interface Repository {
   ownerLogin: string;
 }
 
+/** What a GitHub account may do in a repository, as the collaborators API reports it. */
+export type RepositoryPermission = "admin" | "write" | "read" | "none";
+
+/** Who is allowed to accept a bounty or be paid for reviewing it. */
+export function canMaintain(permission: RepositoryPermission): boolean {
+  return permission === "admin" || permission === "write";
+}
+
 export class GitHubApiError extends Error {
   constructor(
     readonly status: number,
@@ -87,6 +95,27 @@ export class GitHubClient {
       defaultBranch: data.default_branch,
       ownerLogin: data.owner.login,
     };
+  }
+
+  /**
+   * A user's permission in the repository. Someone who is not a collaborator at all is
+   * a 404 rather than a "none", so that answer is normalised here.
+   */
+  async permissionFor(repo: RepoRef, login: string): Promise<RepositoryPermission> {
+    try {
+      const data = await this.request<{ permission: string }>(
+        repo,
+        "GET",
+        `/repos/${repo.fullName}/collaborators/${login}/permission`,
+      );
+      const permission = data.permission;
+      return permission === "admin" || permission === "write" || permission === "read"
+        ? permission
+        : "none";
+    } catch (error) {
+      if (error instanceof GitHubApiError && error.status === 404) return "none";
+      throw error;
+    }
   }
 
   async getIssue(repo: RepoRef, issueNumber: number): Promise<Issue> {

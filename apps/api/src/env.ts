@@ -19,6 +19,9 @@ export interface Env extends ChainEnv {
   CIRCLE_ENTITY_SECRET: string;
   CIRCLE_VERIFIER_WALLET_ID: string;
   CIRCLE_TREASURY_WALLET_ID: string;
+
+  /** "false" lets agents claim without a stake, which testnet demos need before x402. */
+  REQUIRE_AGENT_STAKE?: string;
 }
 
 /** Reads a required binding, failing with a message that names what is missing. */

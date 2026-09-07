@@ -8,22 +8,28 @@ import {
   fakeClaim,
   fakeInstallation,
   fakeRepo,
+  fakeStakePayment,
   fakeUser,
 } from "../../store.fake";
-import { handleIssueComment } from "./issue-comment";
-import type { CommentWriter } from "./issues";
+import { type CommandClient, handleIssueComment } from "./issue-comment";
 
 const env = {
   ARC_NETWORK: "testnet",
   PUBLIC_WEB_URL: "https://proofwork.dev",
 } as unknown as Env;
 
-function commentWriter() {
+/** Testnet demos run before the x402 stake endpoint exists. */
+const envWithoutStakes = { ...env, REQUIRE_AGENT_STAKE: "false" } as unknown as Env;
+
+function commentWriter(permission: "admin" | "write" | "read" | "none" = "none") {
   const posted: Array<{ issueNumber: number; marker: string; body: string }> = [];
-  const github: CommentWriter = {
+  const github: CommandClient = {
     async upsertIssueComment(_repo, issueNumber, marker, body) {
       posted.push({ issueNumber, marker, body });
       return { id: 1, body, htmlUrl: "https://github.com/c/1", authorLogin: "proofwork-arc[bot]" };
+    },
+    async permissionFor() {
+      return permission;
     },
   };
   return { github, posted };
@@ -100,7 +106,7 @@ describe("/claim", () => {
     const { github } = commentWriter();
 
     await handleIssueComment(
-      { store, github, env },
+      { store, github, env: envWithoutStakes },
       comment("/claim", {
         comment: { id: 1, body: "/claim", user: { id: 77, login: "proofwork-agent" } },
         sender: { id: 77, login: "proofwork-agent" },
@@ -305,5 +311,169 @@ describe("comments that are not commands", () => {
     await handleIssueComment({ store, github, env }, comment("/claim"));
 
     expect(posted).toEqual([]);
+  });
+});
+
+describe("repository policy", () => {
+  const agentComment = () =>
+    comment("/claim", {
+      comment: { id: 1, body: "/claim", user: { id: 77, login: "proofwork-agent" } },
+      sender: { id: 77, login: "proofwork-agent" },
+    });
+
+  const stakedComment = (stakeId: string) =>
+    comment(`/claim stake:${stakeId}`, {
+      comment: {
+        id: 1,
+        body: `/claim stake:${stakeId}`,
+        user: { id: 77, login: "proofwork-agent" },
+      },
+      sender: { id: 77, login: "proofwork-agent" },
+    });
+
+  function agentStore(overrides: Parameters<typeof createFakeStore>[0] = {}) {
+    return createFakeStore({
+      repos: [{ repo: fakeRepo(), installation: fakeInstallation() }],
+      bounties: [fakeBounty()],
+      agents: [fakeAgent()],
+      ...(Array.isArray(overrides) ? {} : overrides),
+    });
+  }
+
+  it("turns an agent away from a repository that does not accept AI work", async () => {
+    const store = agentStore({
+      repos: [
+        {
+          repo: fakeRepo({
+            policy: {
+              aiContributions: "none",
+              minStakeUsdc: "1000000",
+              autoAccept: true,
+              claimTtlHours: 72,
+            },
+          }),
+          installation: fakeInstallation(),
+        },
+      ],
+    });
+    const { github, posted } = commentWriter();
+
+    await handleIssueComment({ store, github, env: envWithoutStakes }, agentComment());
+
+    expect(await store.activeClaimsFor("bounty-1")).toEqual([]);
+    expect(posted[0]?.body).toContain("does not accept AI-authored contributions");
+  });
+
+  it("requires a stake before an agent may claim", async () => {
+    const store = agentStore();
+    const { github, posted } = commentWriter();
+
+    await handleIssueComment({ store, github, env }, agentComment());
+
+    expect(await store.activeClaimsFor("bounty-1")).toEqual([]);
+    expect(posted[0]?.body).toContain("$1.00 USDC stake");
+  });
+
+  it("holds a valid stake with the claim", async () => {
+    const store = agentStore({ payments: [fakeStakePayment()] });
+    const { github } = commentWriter();
+
+    await handleIssueComment({ store, github, env }, stakedComment("payment-1"));
+
+    expect((await store.activeClaimsFor("bounty-1"))[0]).toMatchObject({
+      claimantKind: "agent",
+      stakePaymentId: "payment-1",
+      stakeStatus: "held",
+    });
+  });
+
+  it("refuses a stake paid by somebody else", async () => {
+    const store = agentStore({
+      payments: [fakeStakePayment({ payer: "0x0000000000000000000000000000000000000001" })],
+    });
+    const { github, posted } = commentWriter();
+
+    await handleIssueComment({ store, github, env }, stakedComment("payment-1"));
+
+    expect(await store.activeClaimsFor("bounty-1")).toEqual([]);
+    expect(posted[0]?.body).toContain("stake");
+  });
+
+  it("refuses a stake that is too small for the policy", async () => {
+    const store = agentStore({ payments: [fakeStakePayment({ amountUsdc: 500_000n })] });
+    const { github } = commentWriter();
+
+    await handleIssueComment({ store, github, env }, stakedComment("payment-1"));
+
+    expect(await store.activeClaimsFor("bounty-1")).toEqual([]);
+  });
+
+  it("refuses a stake already backing another claim", async () => {
+    const store = agentStore({
+      payments: [fakeStakePayment()],
+      claims: [fakeClaim({ githubLogin: "someone-else", stakePaymentId: "payment-1" })],
+    });
+    const { github } = commentWriter();
+
+    await handleIssueComment({ store, github, env }, stakedComment("payment-1"));
+
+    expect(await store.activeClaimBy("bounty-1", "proofwork-agent")).toBeUndefined();
+  });
+});
+
+describe("/accept", () => {
+  function pendingStore() {
+    return createFakeStore({
+      repos: [{ repo: fakeRepo(), installation: fakeInstallation() }],
+      bounties: [fakeBounty({ status: "pending_accept" })],
+    });
+  }
+
+  it("opens a bounty when someone who can merge accepts it", async () => {
+    const store = pendingStore();
+    const { github, posted } = commentWriter("admin");
+
+    await handleIssueComment({ store, github, env }, comment("/accept"));
+
+    expect(store.bounties.get("bounty-1")?.status).toBe("open");
+    expect(store.bounties.get("bounty-1")?.acceptedAt).toBeInstanceOf(Date);
+    expect(posted[0]?.body).toContain("$200.00 USDC");
+    expect(posted[0]?.body).toContain("/claim");
+  });
+
+  it("ignores an accept from someone with no write access", async () => {
+    const store = pendingStore();
+    const { github, posted } = commentWriter("read");
+
+    await handleIssueComment({ store, github, env }, comment("/accept"));
+
+    expect(store.bounties.get("bounty-1")?.status).toBe("pending_accept");
+    expect(posted).toEqual([]);
+  });
+
+  it("ignores an accept on a bounty that is already open", async () => {
+    const store = createFakeStore({
+      repos: [{ repo: fakeRepo(), installation: fakeInstallation() }],
+      bounties: [fakeBounty()],
+    });
+    const { github, posted } = commentWriter("admin");
+
+    await handleIssueComment({ store, github, env }, comment("/accept"));
+
+    expect(posted).toEqual([]);
+  });
+
+  it("refuses a claim while the maintainer has not accepted", async () => {
+    const store = createFakeStore({
+      repos: [{ repo: fakeRepo(), installation: fakeInstallation() }],
+      bounties: [fakeBounty({ status: "pending_accept" })],
+      users: [fakeUser()],
+    });
+    const { github, posted } = commentWriter();
+
+    await handleIssueComment({ store, github, env }, comment("/claim"));
+
+    expect(await store.activeClaimsFor("bounty-1")).toEqual([]);
+    expect(posted[0]?.body).toContain("pending_accept");
   });
 });

@@ -14,6 +14,7 @@ export type CommentKind =
   | "pending-accept"
   | "claimed"
   | "needs-payout"
+  | "stake-required"
   | "unclaimed"
   | "ai-not-allowed"
   | "linked"
@@ -66,7 +67,8 @@ export interface FundedInput {
   amountUsdc: bigint;
   maintainerRewardUsdc: bigint;
   bountyUrl: string;
-  fundingTxUrl: string;
+  /** Null until the escrow transaction hash is known. */
+  fundingTxUrl: string | null;
   expiresAt: Date;
 }
 
@@ -83,7 +85,13 @@ export function fundedComment(input: FundedInput): RenderedComment {
     "",
     `Comment \`/claim\` to take it, then open a pull request whose body says \`Fixes #${input.issueNumber}\`.`,
     "",
-    `[Bounty details](${input.bountyUrl}) · [Escrow transaction](${input.fundingTxUrl}) · Expires ${formatDate(input.expiresAt)}`,
+    [
+      `[Bounty details](${input.bountyUrl})`,
+      input.fundingTxUrl ? `[Escrow transaction](${input.fundingTxUrl})` : undefined,
+      `Expires ${formatDate(input.expiresAt)}`,
+    ]
+      .filter(Boolean)
+      .join(" · "),
   ]);
 }
 
@@ -134,6 +142,25 @@ export function needsPayoutAddressComment(input: NeedsPayoutInput): RenderedComm
     `@${input.login} — there is nowhere to send the USDC yet.`,
     "",
     `Add a payout address at [${input.payoutUrl}](${input.payoutUrl}), then comment \`/claim\` again. It takes a minute and you only do it once.`,
+  ]);
+}
+
+export interface StakeRequiredInput {
+  bountyId: string;
+  login: string;
+  minStakeUsdc: bigint;
+  stakeUrl: string;
+}
+
+/**
+ * Agents stake to claim. The stake goes to the maintainer if the work is abandoned or
+ * rejected, which is what makes reviewing agent pull requests worth a maintainer's time.
+ */
+export function stakeRequiredComment(input: StakeRequiredInput): RenderedComment {
+  return render(input.bountyId, "stake-required", [
+    `@${input.login} — this repository requires a ${formatUsdc(input.minStakeUsdc)} stake before an agent can claim.`,
+    "",
+    `Pay it at [${input.stakeUrl}](${input.stakeUrl}) and comment \`/claim stake:<id>\` with the payment id. It comes back when your pull request is merged.`,
   ]);
 }
 

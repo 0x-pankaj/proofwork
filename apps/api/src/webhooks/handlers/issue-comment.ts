@@ -1,21 +1,29 @@
-import { txUrl } from "@proofwork/chain";
+import { bpsOf, txUrl } from "@proofwork/chain";
 import { isClaimable } from "@proofwork/core";
 import type { Bounty, Claim, RepoWithInstallation } from "@proofwork/db";
 import {
+  aiNotAllowedComment,
+  canMaintain,
   claimedComment,
+  fundedComment,
+  type GitHubClient,
   type IssueCommentEvent,
   isBotAuthor,
   needsPayoutAddressComment,
   parseSlashCommand,
   type RenderedComment,
+  type SlashCommand,
+  stakeRequiredComment,
   statusComment,
   unclaimedComment,
 } from "@proofwork/github";
 import type { Env } from "../../env";
 import type { Store } from "../../store";
-import { bountyUrl, payoutUrl } from "../../urls";
+import { bountyUrl, payoutUrl, stakeUrl } from "../../urls";
 import { repoRef } from "../repo-ref";
-import type { CommentWriter } from "./issues";
+
+/** The GitHub calls the commands make: writing a reply, and checking who is a maintainer. */
+export type CommandClient = Pick<GitHubClient, "upsertIssueComment" | "permissionFor">;
 
 /**
  * Slash commands on a bounty's issue.
@@ -27,7 +35,7 @@ import type { CommentWriter } from "./issues";
 
 export interface IssueCommentDeps {
   store: Store;
-  github: CommentWriter;
+  github: CommandClient;
   env: Env;
 }
 
@@ -66,9 +74,11 @@ export async function handleIssueComment(
 
   switch (command.name) {
     case "claim":
-      return claim(context, event);
+      return claim(context, event, command);
     case "unclaim":
       return unclaim(context);
+    case "accept":
+      return accept(context);
     case "status":
       return status(context);
     default:
@@ -76,8 +86,13 @@ export async function handleIssueComment(
   }
 }
 
-async function claim(context: CommandContext, event: IssueCommentEvent): Promise<void> {
+async function claim(
+  context: CommandContext,
+  event: IssueCommentEvent,
+  command: SlashCommand,
+): Promise<void> {
   const { store, bounty, login } = context;
+  const policy = context.found.repo.policy;
 
   if (!isClaimable(bounty.status)) {
     await reply(context, await statusOf(context));
@@ -85,6 +100,14 @@ async function claim(context: CommandContext, event: IssueCommentEvent): Promise
   }
 
   const agent = await store.agentByGithubLogin(login);
+
+  // The repository's terms, enforced before work starts rather than after a pull request
+  // has already cost the maintainer a review.
+  if (agent && policy.aiContributions === "none") {
+    await reply(context, aiNotAllowedComment(bounty.id, login));
+    return;
+  }
+
   const user = agent
     ? undefined
     : await store.upsertUser({
@@ -105,6 +128,26 @@ async function claim(context: CommandContext, event: IssueCommentEvent): Promise
     return;
   }
 
+  const minStake = BigInt(policy.minStakeUsdc);
+  let stakePaymentId: string | null = null;
+
+  if (agent && requiresStake(context.env)) {
+    const stake = await resolveStake(context, command.stakeId, agent.walletAddress, minStake);
+    if (!stake) {
+      await reply(
+        context,
+        stakeRequiredComment({
+          bountyId: bounty.id,
+          login,
+          minStakeUsdc: minStake,
+          stakeUrl: stakeUrl(context.env),
+        }),
+      );
+      return;
+    }
+    stakePaymentId = stake;
+  }
+
   await store.claimBounty({
     bountyId: bounty.id,
     claimantKind: agent ? "agent" : "user",
@@ -112,6 +155,8 @@ async function claim(context: CommandContext, event: IssueCommentEvent): Promise
     agentId: agent?.id ?? null,
     githubLogin: login,
     payoutAddress,
+    stakePaymentId,
+    stakeStatus: stakePaymentId ? "held" : "none",
   });
 
   // Only the first claim moves the bounty; later ones join a bounty already claimed.
@@ -141,6 +186,60 @@ async function unclaim(context: CommandContext): Promise<void> {
   }
 
   await reply(context, unclaimedComment(bounty.id, login));
+}
+
+/**
+ * A maintainer opening a bounty someone else funded on their repository. Anyone may type
+ * `/accept`; only someone who can merge is listened to, and the rest is ignored silently
+ * rather than answered, so the command cannot be used to spam an issue.
+ */
+async function accept(context: CommandContext): Promise<void> {
+  const { store, bounty, found, login, env } = context;
+  if (bounty.status !== "pending_accept") return;
+
+  const permission = await context.github.permissionFor(repoRef(found), login);
+  if (!canMaintain(permission)) return;
+
+  if (!(await store.acceptBounty(bounty.id))) return;
+
+  await reply(
+    context,
+    fundedComment({
+      bountyId: bounty.id,
+      issueNumber: context.issueNumber,
+      amountUsdc: bounty.amountUsdc,
+      maintainerRewardUsdc: bpsOf(bounty.amountUsdc, bounty.maintainerRewardBps),
+      bountyUrl: bountyUrl(env, bounty.id),
+      fundingTxUrl: bounty.createTxHash ? txUrl(bounty.createTxHash, env) : null,
+      expiresAt: bounty.expiresAt,
+    }),
+  );
+}
+
+/**
+ * A stake is valid when it was paid by this agent, is large enough for the repository's
+ * policy, and is not already backing another live claim. Returns the payment id to hold.
+ */
+async function resolveStake(
+  context: CommandContext,
+  stakeId: string | undefined,
+  walletAddress: string,
+  minStakeUsdc: bigint,
+): Promise<string | undefined> {
+  if (!stakeId) return undefined;
+
+  const payment = await context.store.x402PaymentById(stakeId);
+  if (!payment) return undefined;
+  if (payment.payer.toLowerCase() !== walletAddress.toLowerCase()) return undefined;
+  if (payment.amountUsdc < minStakeUsdc) return undefined;
+  if (await context.store.stakeInUse(payment.id)) return undefined;
+
+  return payment.id;
+}
+
+/** Stakes are on unless explicitly disabled, which is how testnet demos run before x402. */
+function requiresStake(env: Env): boolean {
+  return env.REQUIRE_AGENT_STAKE !== "false";
 }
 
 async function status(context: CommandContext): Promise<void> {

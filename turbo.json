@@ -28,7 +28,8 @@
     "INTERNAL_API_KEY",
     "DEPLOYER_ADDRESS",
     "TREASURY",
-    "CIRCLE_BLOCKCHAIN"
+    "CIRCLE_BLOCKCHAIN",
+    "REQUIRE_AGENT_STAKE"
   ],
   "globalDependencies": ["packages/config/**"],
   "tasks": {

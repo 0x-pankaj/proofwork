@@ -6,6 +6,7 @@ import type {
   RepositoryInput,
   RepoWithInstallation,
   User,
+  X402Payment,
 } from "@proofwork/db";
 import type { Store } from "./store";
 
@@ -20,6 +21,7 @@ export interface FakeStore extends Store {
   agents: Map<string, Agent>;
   bounties: Map<string, Bounty>;
   claims: Claim[];
+  payments: Map<string, X402Payment>;
   synced: Array<{ installationId: string; repositories: RepositoryInput[] }>;
   uninstalledRepoIds: bigint[];
   uninstalledInstallations: string[];
@@ -31,6 +33,7 @@ export interface FakeStoreSeed {
   agents?: Agent[];
   bounties?: Bounty[];
   claims?: Claim[];
+  payments?: X402Payment[];
 }
 
 export function fakeInstallation(overrides: Partial<Installation> = {}): Installation {
@@ -128,6 +131,19 @@ export function fakeBounty(overrides: Partial<Bounty> = {}): Bounty {
   };
 }
 
+export function fakeStakePayment(overrides: Partial<X402Payment> = {}): X402Payment {
+  return {
+    id: "payment-1",
+    endpoint: "/v1/claims/stake",
+    payer: "0x3975261337566c22a5129eb82bdcc8c364c4a313",
+    amountUsdc: 1_000_000n,
+    network: "eip155:5042002",
+    requestId: "req-1",
+    createdAt: new Date("2026-09-07T00:00:00Z"),
+    ...overrides,
+  };
+}
+
 export function fakeClaim(overrides: Partial<Claim> = {}): Claim {
   return {
     id: "claim-1",
@@ -158,6 +174,7 @@ export function createFakeStore(seed: FakeStoreSeed | RepoWithInstallation[] = {
     agents: new Map((seeded.agents ?? []).map((agent) => [agent.githubLogin, agent])),
     bounties: new Map((seeded.bounties ?? []).map((bounty) => [bounty.id, bounty])),
     claims: [...(seeded.claims ?? [])],
+    payments: new Map((seeded.payments ?? []).map((payment) => [payment.id, payment])),
     synced: [],
     uninstalledRepoIds: [],
     uninstalledInstallations: [],
@@ -234,6 +251,13 @@ export function createFakeStore(seed: FakeStoreSeed | RepoWithInstallation[] = {
       return store.bounties.get(id);
     },
 
+    async acceptBounty(id) {
+      const bounty = store.bounties.get(id);
+      if (bounty?.status !== "pending_accept") return false;
+      store.bounties.set(id, { ...bounty, status: "open", acceptedAt: new Date() });
+      return true;
+    },
+
     async moveBountyStatus(id, from, to) {
       const bounty = store.bounties.get(id);
       if (!bounty || bounty.status !== from) return false;
@@ -281,6 +305,18 @@ export function createFakeStore(seed: FakeStoreSeed | RepoWithInstallation[] = {
       if (!claim) return false;
       store.claims[index] = { ...claim, status: "withdrawn" };
       return true;
+    },
+
+    async x402PaymentById(id) {
+      return store.payments.get(id);
+    },
+
+    async stakeInUse(paymentId) {
+      return store.claims.some(
+        (claim) =>
+          claim.stakePaymentId === paymentId &&
+          (claim.status === "active" || claim.status === "won"),
+      );
     },
   };
   return store;

@@ -23,6 +23,11 @@ export function payoutUrl(env: Env): string {
   return `${webBase(env)}/me`;
 }
 
+/** Where an agent pays the stake a repository policy requires before claiming. */
+export function stakeUrl(env: Env): string {
+  return `${webBase(env)}/agents/stake`;
+}
+
 export function repoSettingsUrl(env: Env, repoId: string): string {
   return `${webBase(env)}/repos/${repoId}/settings`;
 }
