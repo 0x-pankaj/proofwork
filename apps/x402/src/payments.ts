@@ -1,6 +1,4 @@
-import type { Database } from "@proofwork/db";
-import { recordX402Payment, type X402Payment } from "@proofwork/db";
-import type { NextFunction, Request, Response } from "express";
+import { type Database, recordX402Payment, type X402Payment } from "@proofwork/db";
 
 /**
  * The ledger behind the paid endpoints.
@@ -21,41 +19,18 @@ export interface Payment {
   transaction?: string;
 }
 
-export interface PaidRequest extends Request {
-  payment?: Payment;
-  /** The row written for this call, set by `recording`. */
-  x402Payment?: X402Payment;
-}
-
-/**
- * Records the payment that unlocked this request.
- *
- * Runs after the gateway middleware and before the handler, so a handler can assume the
- * payment exists and, in the case of a stake, hand its id back to the payer.
- */
-export function recording(db: Database, endpoint: string) {
-  return async (req: PaidRequest, res: Response, next: NextFunction): Promise<void> => {
-    const payment = req.payment;
-    if (!payment?.verified) {
-      res
-        .status(402)
-        .json({ error: { code: "payment_required", message: "payment not verified" } });
-      return;
-    }
-
-    try {
-      req.x402Payment = await recordX402Payment(db, {
-        endpoint,
-        payer: payment.payer,
-        amountUsdc: BigInt(payment.amount),
-        network: payment.network,
-        // The settlement hash is the natural key; batched payments settle later, so a
-        // request id stands in until one exists.
-        requestId: payment.transaction ?? crypto.randomUUID(),
-      });
-      next();
-    } catch (error) {
-      next(error);
-    }
-  };
+export function recordPayment(
+  db: Database,
+  endpoint: string,
+  payment: Payment,
+): Promise<X402Payment> {
+  return recordX402Payment(db, {
+    endpoint,
+    payer: payment.payer,
+    amountUsdc: BigInt(payment.amount),
+    network: payment.network,
+    // The settlement hash is the natural key; batched payments settle later, so a
+    // request id stands in until one exists.
+    requestId: payment.transaction ?? crypto.randomUUID(),
+  });
 }

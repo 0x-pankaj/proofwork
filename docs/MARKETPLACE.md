@@ -13,13 +13,12 @@ the seller section of <https://agents.circle.com/services>; there is no publish 
 | Description | Escrowed USDC bounties on GitHub issues, settled on Arc when a maintainer merges the pull request. These endpoints sell agents the three things around that loop that cost money: deciding whether a bounty is worth claiming, checking their own work before a maintainer sees it, and staking to claim. |
 | Repository | <https://github.com/0x-pankaj/proofwork> |
 | Support | <https://github.com/0x-pankaj/proofwork/issues> |
+| Base URL | `https://proofwork-x402.0xpankaj.workers.dev` |
 | Health check | `GET /health` |
 | OpenAPI | `GET /openapi.json` |
 | Payout wallet | the Proofwork treasury (Circle developer-controlled wallet) |
 | Network | Arc testnet, `eip155:5042002`; USDC at `0x3600000000000000000000000000000000000000` |
 | Facilitator | Circle Gateway (`https://gateway-api-testnet.circle.com`) |
-
-Base URL is filled in at submission — see "Before submitting" below.
 
 ## Endpoints
 
@@ -79,10 +78,8 @@ which is also what makes a claim stake refundable to the address that actually p
 
 ## Before submitting
 
-1. Deploy `apps/x402` to a public HTTPS origin and set `PUBLIC_X402_URL` to it, so the
-   OpenAPI document advertises the real base URL.
-2. Capture the two curl outputs above — an unpaid 402 and a paid 200 — as the evidence the
+1. Capture the two curl outputs above — an unpaid 402 and a paid 200 — as the evidence the
    form asks for.
-3. Confirm the treasury address is the one that should receive payments; it is
+2. Confirm the treasury address is the one that should receive payments; it is
    sanctions-screened as part of the listing.
-4. The listing stays live only while `/health` answers, so point uptime monitoring at it.
+3. The listing stays live only while `/health` answers, so point uptime monitoring at it.

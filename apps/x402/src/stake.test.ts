@@ -1,8 +1,17 @@
-import type { Response } from "express";
+import type { X402Payment } from "@proofwork/db";
 import { describe, expect, it } from "vitest";
-import type { PaidRequest } from "./payments";
 import { price } from "./price";
-import { stakeHandler } from "./stake";
+import { stakeReceipt } from "./stake";
+
+const payment: X402Payment = {
+  id: "payment-1",
+  endpoint: "/v1/claims/stake",
+  payer: "0xa11ce",
+  amountUsdc: 1_000_000n,
+  network: "eip155:5042002",
+  requestId: "request-1",
+  createdAt: new Date("2026-09-07T00:00:00Z"),
+};
 
 describe("price", () => {
   it("keeps sub-cent prices exact and gives whole amounts their cents", () => {
@@ -12,39 +21,12 @@ describe("price", () => {
   });
 });
 
-describe("stakeHandler", () => {
-  function respond() {
-    const sent: { status?: number; body?: unknown } = {};
-    const res = {
-      status(code: number) {
-        sent.status = code;
-        return this;
-      },
-      json(body: unknown) {
-        sent.body = body;
-      },
-    } as unknown as Response;
-    return { res, sent };
-  }
-
+describe("stakeReceipt", () => {
   it("hands back the comment the agent has to post", () => {
-    const { res, sent } = respond();
-    const req = {
-      query: { bountyId: "bounty-1" },
-      x402Payment: {
-        id: "payment-1",
-        endpoint: "/v1/claims/stake",
-        payer: "0xa11ce",
-        amountUsdc: 1_000_000n,
-        network: "eip155:5042002",
-        requestId: "request-1",
-        createdAt: new Date(),
-      },
-    } as unknown as PaidRequest;
+    const result = stakeReceipt(payment, "bounty-1");
 
-    stakeHandler()(req, res);
-
-    expect(sent.body).toMatchObject({
+    expect(result.status).toBe(200);
+    expect(result.body).toMatchObject({
       stakeId: "payment-1",
       amountUsdc: "1000000",
       bountyId: "bounty-1",
@@ -52,11 +34,7 @@ describe("stakeHandler", () => {
     });
   });
 
-  it("refuses to invent a stake when no payment was recorded", () => {
-    const { res, sent } = respond();
-
-    stakeHandler()({ query: {} } as unknown as PaidRequest, res);
-
-    expect(sent.status).toBe(500);
+  it("allows a stake with no bounty attached", () => {
+    expect(stakeReceipt(payment, undefined).body).toMatchObject({ bountyId: null });
   });
 });

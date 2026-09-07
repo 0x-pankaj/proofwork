@@ -10,6 +10,10 @@
 
 import { writeFileSync } from "node:fs";
 
+// The paid endpoints are paid to the treasury; naming it twice in .env is a way for the
+// two to drift apart.
+process.env.X402_SELLER_ADDRESS ??= process.env.CIRCLE_TREASURY_ADDRESS;
+
 const TARGETS: Array<{ path: string; keys: string[] }> = [
   {
     path: "apps/api/.dev.vars",
@@ -29,6 +33,20 @@ const TARGETS: Array<{ path: string; keys: string[] }> = [
       "CIRCLE_VERIFIER_ADDRESS",
       "COMPLIANCE_MODE",
       "REQUIRE_AGENT_STAKE",
+    ],
+  },
+  {
+    path: "apps/x402/.dev.vars",
+    keys: [
+      "ARC_NETWORK",
+      "ARC_TESTNET_RPC_URL",
+      "DATABASE_URL",
+      "X402_SELLER_ADDRESS",
+      "X402_FACILITATOR_URL",
+      "GITHUB_APP_ID",
+      "GITHUB_APP_PRIVATE_KEY",
+      "ANTHROPIC_API_KEY",
+      "ANTHROPIC_BASE_URL",
     ],
   },
   {

@@ -8,8 +8,7 @@ import {
   type Database,
   type Repo,
 } from "@proofwork/db";
-import type { Response } from "express";
-import type { PaidRequest } from "./payments";
+import { failure, ok, type Result } from "./result";
 
 /**
  * Is this bounty worth an agent's time?
@@ -31,55 +30,53 @@ export interface Fit {
   blockers: string[];
 }
 
-export function fitHandler(db: Database) {
-  return async (req: PaidRequest, res: Response): Promise<void> => {
-    const bountyId = typeof req.query.bountyId === "string" ? req.query.bountyId : "";
-    if (!bountyId) {
-      res.status(400).json({
-        error: { code: "invalid_request", message: "pass ?bountyId=<uuid>" },
-      });
-      return;
-    }
-
-    const listing = await bountyWithRepo(db, bountyId);
-    if (!listing) {
-      res.status(404).json({ error: { code: "not_found", message: "no such bounty" } });
-      return;
-    }
-
-    const { bounty, repo } = listing;
-    const claims = await activeClaimsFor(db, bounty.id);
-    const skills = skillsOf(req);
-    const fit = scoreFit({ bounty, repo, claims, skills, now: new Date() });
-
-    res.json({
-      bountyId: bounty.id,
-      repo: repo.fullName,
-      issueNumber: bounty.issueNumber,
-      issueTitle: bounty.issueTitle,
-      status: bounty.status,
-      /** What a contributor actually receives; the rest is the maintainer's review reward. */
-      contributorUsdc: String(
-        bounty.amountUsdc - bpsOf(bounty.amountUsdc, bounty.maintainerRewardBps),
-      ),
-      amountUsdc: String(bounty.amountUsdc),
-      tags: bounty.tags,
-      expiresAt: bounty.expiresAt,
-      competingClaims: claims.length,
-      policy: {
-        aiContributions: repo.policy.aiContributions,
-        minStakeUsdc: repo.policy.minStakeUsdc,
-        claimTtlHours: repo.policy.claimTtlHours,
-      },
-      ...fit,
-    });
-  };
+export interface FitQuery {
+  bountyId: string | undefined;
+  /** Comma-separated, compared against the bounty's tags and title. */
+  skills: string | undefined;
 }
 
-function skillsOf(req: PaidRequest): string[] {
-  const value = req.query.skills;
-  const raw = typeof value === "string" ? value : "";
-  return raw
+export async function fit(db: Database, query: FitQuery): Promise<Result> {
+  if (!query.bountyId) return failure(400, "invalid_request", "pass ?bountyId=<uuid>");
+
+  const listing = await bountyWithRepo(db, query.bountyId);
+  if (!listing) return failure(404, "not_found", "no such bounty");
+
+  const { bounty, repo } = listing;
+  const claims = await activeClaimsFor(db, bounty.id);
+  const scored = scoreFit({
+    bounty,
+    repo,
+    claims,
+    skills: skillsOf(query.skills),
+    now: new Date(),
+  });
+
+  return ok({
+    bountyId: bounty.id,
+    repo: repo.fullName,
+    issueNumber: bounty.issueNumber,
+    issueTitle: bounty.issueTitle,
+    status: bounty.status,
+    /** What a contributor actually receives; the rest is the maintainer's review reward. */
+    contributorUsdc: String(
+      bounty.amountUsdc - bpsOf(bounty.amountUsdc, bounty.maintainerRewardBps),
+    ),
+    amountUsdc: String(bounty.amountUsdc),
+    tags: bounty.tags,
+    expiresAt: bounty.expiresAt,
+    competingClaims: claims.length,
+    policy: {
+      aiContributions: repo.policy.aiContributions,
+      minStakeUsdc: repo.policy.minStakeUsdc,
+      claimTtlHours: repo.policy.claimTtlHours,
+    },
+    ...scored,
+  });
+}
+
+function skillsOf(raw: string | undefined): string[] {
+  return (raw ?? "")
     .split(",")
     .map((skill) => skill.trim().toLowerCase())
     .filter(Boolean);

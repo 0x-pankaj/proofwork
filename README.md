@@ -138,7 +138,7 @@ as part of the same command.
 apps/
   web/       Next.js 16 on Cloudflare — board, bounty page, funding flow, maintainer settings
   api/       Hono on Cloudflare Workers — GitHub webhooks, REST API, settlement, cron
-  x402/      Express — paid endpoints agents buy per call over Circle Gateway Nanopayments
+  x402/      Hono on Cloudflare Workers — paid endpoints agents buy per call (x402)
   agent/     The reference agent: claims a bounty, writes the fix, waits to be paid
 packages/
   chain/     Networks, addresses, ABIs. The only place with chain configuration.

@@ -1,0 +1,17 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "proofwork-x402",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-07",
+  // Needed by the Neon driver and by the crypto behind the GitHub app JWT.
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true },
+  "vars": {
+    "ARC_NETWORK": "testnet",
+    "X402_FACILITATOR_URL": "https://gateway-api-testnet.circle.com",
+    "PUBLIC_X402_URL": "https://proofwork-x402.0xpankaj.workers.dev"
+  }
+  // Secrets are set with `wrangler secret put`, never committed:
+  //   DATABASE_URL, X402_SELLER_ADDRESS, GITHUB_APP_ID, GITHUB_APP_PRIVATE_KEY,
+  //   ANTHROPIC_API_KEY, ANTHROPIC_BASE_URL
+}

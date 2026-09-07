@@ -1,9 +1,8 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { GitHubClient, RepoRef } from "@proofwork/github";
-import type { Response } from "express";
 import { z } from "zod";
 import type { Env } from "./env";
-import type { PaidRequest } from "./payments";
+import { failure, ok, type Result } from "./result";
 
 /**
  * A pre-review of a pull request, for five cents.
@@ -44,51 +43,38 @@ export interface ReviewDeps {
   anthropic?: Pick<Anthropic["messages"], "create">;
 }
 
-export function reviewHandler(deps: ReviewDeps) {
-  return async (req: PaidRequest, res: Response): Promise<void> => {
-    const parsed = reviewSchema.safeParse(req.body);
-    if (!parsed.success) {
-      res.status(400).json({
-        error: { code: "invalid_request", message: "send { repo, prNumber, issueNumber? }" },
-      });
-      return;
-    }
+export async function pullRequestReview(deps: ReviewDeps, payload: unknown): Promise<Result> {
+  const parsed = reviewSchema.safeParse(payload);
+  if (!parsed.success) {
+    return failure(400, "invalid_request", "send { repo, prNumber, issueNumber? }");
+  }
 
-    const { repo, prNumber, issueNumber } = parsed.data;
-    const ref = await deps.installationFor(repo);
-    if (!ref) {
-      res.status(404).json({
-        error: {
-          code: "not_installed",
-          message: `Proofwork is not installed on ${repo}, so its diff cannot be read`,
-        },
-      });
-      return;
-    }
+  const { repo, prNumber, issueNumber } = parsed.data;
+  const ref = await deps.installationFor(repo);
+  if (!ref) {
+    return failure(
+      404,
+      "not_installed",
+      `Proofwork is not installed on ${repo}, so its diff cannot be read`,
+    );
+  }
 
-    const [pull, diff, issue] = await Promise.all([
-      deps.github.getPullRequest(ref, prNumber),
-      deps.github.getPullRequestDiff(ref, prNumber),
-      issueNumber ? deps.github.getIssue(ref, issueNumber) : Promise.resolve(undefined),
-    ]);
+  const [pull, diff, issue] = await Promise.all([
+    deps.github.getPullRequest(ref, prNumber),
+    deps.github.getPullRequestDiff(ref, prNumber),
+    issueNumber ? deps.github.getIssue(ref, issueNumber) : Promise.resolve(undefined),
+  ]);
 
-    const verdict = await review(deps, {
-      title: pull.title,
-      body: pull.body ?? "",
-      diff: diff.slice(0, MAX_DIFF_CHARS),
-      truncated: diff.length > MAX_DIFF_CHARS,
-      issueTitle: issue?.title,
-      issueBody: issue?.body,
-    });
+  const verdict = await review(deps, {
+    title: pull.title,
+    body: pull.body ?? "",
+    diff: diff.slice(0, MAX_DIFF_CHARS),
+    truncated: diff.length > MAX_DIFF_CHARS,
+    ...(issue?.title ? { issueTitle: issue.title } : {}),
+    ...(issue?.body ? { issueBody: issue.body } : {}),
+  });
 
-    res.json({
-      repo,
-      prNumber,
-      issueNumber: issueNumber ?? null,
-      model: MODEL,
-      ...verdict,
-    });
-  };
+  return ok({ repo, prNumber, issueNumber: issueNumber ?? null, model: MODEL, ...verdict });
 }
 
 interface ReviewInput {

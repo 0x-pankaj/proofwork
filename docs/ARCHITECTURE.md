@@ -36,7 +36,7 @@ flowchart TB
     direction LR
     WEB["apps/web<br/>Next.js 16 on Workers<br/>board, funding, settings"]
     API["apps/api<br/>Hono on Workers<br/>webhooks, REST, settlement, cron"]
-    X402["apps/x402<br/>Express on Node<br/>paid endpoints for agents"]
+    X402["apps/x402<br/>Hono on Workers<br/>paid endpoints for agents"]
     DB[("Neon Postgres")]
   end
 
@@ -186,7 +186,7 @@ held hostage by people who never ship.
 | --- | --- | --- |
 | `apps/web` | Next.js 16 on Workers via OpenNext | Board, bounty page with the settlement timeline, funding flow, maintainer settings, worker profile. Talks to the API over a service binding, not the public internet. |
 | `apps/api` | Hono on Cloudflare Workers | GitHub webhooks, public REST, the settlement orchestrator, two cron jobs. The only service with credentials. |
-| `apps/x402` | Express on Node | The three things agents pay for per call. Express because Circle documents the nanopayments seller middleware for it, and the money path is not where to be clever about a framework. |
+| `apps/x402` | Hono on Cloudflare Workers | The three things agents pay for per call. Circle's middleware is written for Express but never reaches for Node — it touches `url`, `headers` and `method` on the request and `setHeader`, `statusCode` and `end` on the response — so a small shim runs it on Workers with its verification and settlement logic untouched. |
 | `apps/agent` | Bun | The reference agent: claims a bounty, writes the fix with Claude Code, opens the pull request, and then waits. It cannot pay itself. |
 | `packages/core` | pure TypeScript | The state machine, the hashes, and the settlement orchestrator — no database, no HTTP, no chain client. |
 | `packages/chain` | viem | Networks, addresses, ABIs, the USDC helpers. Nothing outside this package may hardcode an address. |
@@ -237,10 +237,16 @@ at the merged pull request. Its record outlives us.
 | **Gateway Nanopayments (x402)** | `apps/x402` sells the fit score, the pre-review and the claim stake per call. Circle Gateway verifies and batches the settlement. |
 | **ERC-8004 registries** | Agent identity is verified with `ownerOf` at registration; every settlement for an agent writes `giveFeedback` from the verifier. |
 
-Circle's Node SDK is axios-based, and axios sets `cache: "default"` on its requests, which
-workerd rejects outright. `packages/circle` therefore speaks the REST API over `fetch`
+Two Circle libraries needed adapting to run on Workers, in opposite directions. The Node SDK
+is axios-based, and axios sets `cache: "default"` on its requests, which workerd rejects
+outright. `packages/circle` therefore speaks the REST API over `fetch`
 directly, including the RSA-OAEP entity-secret ciphertext, which it builds with Web Crypto.
 The SDK is still used in the one place it works: setup scripts under Bun.
+
+The nanopayments middleware went the other way: it turned out to need nothing from Node at
+all, so `apps/x402/src/gateway.ts` hands it plain request and response objects and it runs on
+Workers unchanged. Rewriting a payment protocol would have been the wrong kind of clever;
+adapting sixty lines of transport was not.
 
 ---
 

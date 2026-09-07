@@ -4,8 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "bun --watch src/index.ts",
-    "start": "node --experimental-strip-types src/index.ts",
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
     "typecheck": "tsc --noEmit",
     "lint": "biome check .",
     "test": "vitest run"
@@ -18,13 +18,13 @@
     "@proofwork/github": "workspace:*",
     "@x402/core": "^2.3.0",
     "@x402/evm": "^2.3.0",
-    "express": "^5.1.0",
+    "hono": "^4.13.7",
     "viem": "^2.56.3",
     "zod": "^4.5.4"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260907.1",
     "@proofwork/config": "workspace:*",
-    "@types/express": "^5.0.0",
-    "@types/node": "^22.10.0"
+    "wrangler": "^4.0.0"
   }
 }
