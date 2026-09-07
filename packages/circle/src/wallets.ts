@@ -1,4 +1,4 @@
-import { initiateDeveloperControlledWalletsClient } from "@circle-fin/developer-controlled-wallets";
+import { CircleHttpClient } from "./http-client";
 
 /**
  * The verifier wallet, which is the only thing allowed to release escrow.
@@ -104,13 +104,10 @@ export class CircleWallets {
       this.client = config.client;
       return;
     }
-    if (!config.apiKey) throw new Error("CIRCLE_API_KEY is required");
-    if (!config.entitySecret) throw new Error("CIRCLE_ENTITY_SECRET is required");
-    // The SDK's own types are wider than what we use; the narrow view is the contract.
-    this.client = initiateDeveloperControlledWalletsClient({
+    this.client = new CircleHttpClient({
       apiKey: config.apiKey,
       entitySecret: config.entitySecret,
-    }) as unknown as CircleClient;
+    });
   }
 
   /** Submits a contract call and returns Circle's transaction id to poll. */

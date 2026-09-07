@@ -14,7 +14,6 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@circle-fin/developer-controlled-wallets": "^10.8.0",
     "@proofwork/chain": "workspace:*"
   },
   "devDependencies": {

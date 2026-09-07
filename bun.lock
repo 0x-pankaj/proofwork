@@ -85,7 +85,6 @@
       "name": "@proofwork/circle",
       "version": "0.0.0",
       "dependencies": {
-        "@circle-fin/developer-controlled-wallets": "^10.8.0",
         "@proofwork/chain": "workspace:*",
       },
       "devDependencies": {
