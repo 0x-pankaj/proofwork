@@ -38,6 +38,18 @@ money already escrowed.
 full, so any ERC-8183 tool or indexer understands a Proofwork bounty, and adds the three-way
 settlement the standard does not model.
 
+### Deployed on Arc testnet
+
+| | |
+| --- | --- |
+| `ProofworkJobs` | [`0x3Bc728A813a7aBe0cB898fd63967525e92353D85`](https://testnet.arcscan.app/address/0x3Bc728A813a7aBe0cB898fd63967525e92353D85) |
+| Verified | Yes, source published on ArcScan |
+| Deployment cost | 0.0456 USDC |
+| Fee | 300 bps (3%) |
+
+The address is committed to the repository in the deployment record, so a fresh checkout
+talks to the right contract with no configuration.
+
 | Property | Value |
 | --- | --- |
 | Solidity | 0.8.24, `evm_version = paris` (Arc has no `PUSH0`) |
