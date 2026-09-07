@@ -13,6 +13,7 @@ import { logger } from "hono/logger";
 import { type Env, required } from "./env";
 import { fail } from "./http";
 import { db } from "./services";
+import { githubDispatcher } from "./webhooks/dispatch";
 import { receiveGitHubWebhook } from "./webhooks/github";
 import { databaseWebhookStore } from "./webhooks/store";
 
@@ -66,6 +67,7 @@ app.post("/webhooks/github", async (c) => {
   const outcome = await receiveGitHubWebhook(c.req.raw, {
     secret: required(c.env, "GITHUB_WEBHOOK_SECRET"),
     store: databaseWebhookStore(db(c.env), "github"),
+    handle: githubDispatcher(c.env),
   });
   return c.json(outcome.body, outcome.status);
 });
