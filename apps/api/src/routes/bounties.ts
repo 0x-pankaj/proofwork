@@ -280,7 +280,13 @@ bountyRoutes.post("/:id/retry-settlement", internalOnly, async (c) => {
     },
     c.req.param("id"),
   );
-  return c.json(outcome);
+
+  // The outcome carries 6-decimal bigints, which JSON cannot hold.
+  return c.json(
+    outcome.kind === "settled"
+      ? { kind: outcome.kind, txHash: outcome.txHash, split: serialiseSplit(outcome.split) }
+      : outcome,
+  );
 });
 
 function summarise(env: Env, bounty: Bounty, repoFullName: string) {
