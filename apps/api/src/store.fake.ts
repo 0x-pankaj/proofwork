@@ -250,6 +250,64 @@ export function createFakeStore(seed: FakeStoreSeed | RepoWithInstallation[] = {
       return [...store.repos.values()].find((entry) => entry.repo.id === repoId);
     },
 
+    async reposForUser(userId, login) {
+      return [...store.repos.values()].filter(
+        (entry) =>
+          entry.repo.installed &&
+          (entry.installation.accountLogin === login || entry.repo.maintainerUserId === userId),
+      );
+    },
+
+    async setRepoSettings(repoId, settings) {
+      const entry = [...store.repos.values()].find((row) => row.repo.id === repoId);
+      if (!entry) return undefined;
+      const repo = {
+        ...entry.repo,
+        ...(settings.policy ? { policy: settings.policy } : {}),
+        ...(settings.maintainerPayoutAddress !== undefined
+          ? { maintainerPayoutAddress: settings.maintainerPayoutAddress }
+          : {}),
+        ...(settings.maintainerUserId !== undefined
+          ? { maintainerUserId: settings.maintainerUserId }
+          : {}),
+      };
+      store.repos.set(String(repo.githubRepoId), { ...entry, repo });
+      return repo;
+    },
+
+    async bountiesForFunder(funderUserId) {
+      const listings = [];
+      for (const bounty of store.bounties.values()) {
+        if (bounty.funderUserId !== funderUserId) continue;
+        const found = await store.repoById(bounty.repoId);
+        if (found) listings.push({ bounty, repo: found.repo });
+      }
+      return listings;
+    },
+
+    async claimsForUser(userId) {
+      const listings = [];
+      for (const claim of store.claims) {
+        if (claim.userId !== userId) continue;
+        const bounty = store.bounties.get(claim.bountyId);
+        const found = bounty ? await store.repoById(bounty.repoId) : undefined;
+        if (bounty && found) listings.push({ claim, bounty, repo: found.repo });
+      }
+      return listings;
+    },
+
+    async settlementsForUser(userId) {
+      const listings = [];
+      for (const settlement of store.settlements.values()) {
+        const claim = store.claims.find((row) => row.id === settlement.claimId);
+        if (claim?.userId !== userId) continue;
+        const bounty = store.bounties.get(settlement.bountyId);
+        const found = bounty ? await store.repoById(bounty.repoId) : undefined;
+        if (bounty && found) listings.push({ settlement, bounty, repo: found.repo });
+      }
+      return listings;
+    },
+
     async upsertUser(input) {
       const user = fakeUser({
         ...store.users.get(input.login),
@@ -266,6 +324,12 @@ export function createFakeStore(seed: FakeStoreSeed | RepoWithInstallation[] = {
 
     async userById(id) {
       return [...store.users.values()].find((user) => user.id === id);
+    },
+
+    async setPayoutAddress(userId, payoutAddress) {
+      for (const [login, user] of store.users) {
+        if (user.id === userId) store.users.set(login, { ...user, payoutAddress });
+      }
     },
 
     async agentByGithubLogin(login) {

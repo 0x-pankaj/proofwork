@@ -1,4 +1,4 @@
-import { and, eq, inArray, ne } from "drizzle-orm";
+import { and, desc, eq, inArray, ne } from "drizzle-orm";
 import type { Database } from "../client";
 import { type Bounty, bounties, type Claim, claims, type Repo, repos } from "../schema";
 
@@ -143,4 +143,21 @@ export async function expireClaims(db: Database, ids: string[]): Promise<number>
     .where(and(inArray(claims.id, ids), eq(claims.status, "active")))
     .returning({ id: claims.id });
   return updated.length;
+}
+
+export interface ClaimListing {
+  claim: Claim;
+  bounty: Bounty;
+  repo: Repo;
+}
+
+/** Everything one person is working on or has worked on. */
+export async function claimsForUser(db: Database, userId: string): Promise<ClaimListing[]> {
+  return db
+    .select({ claim: claims, bounty: bounties, repo: repos })
+    .from(claims)
+    .innerJoin(bounties, eq(claims.bountyId, bounties.id))
+    .innerJoin(repos, eq(bounties.repoId, repos.id))
+    .where(eq(claims.userId, userId))
+    .orderBy(desc(claims.createdAt));
 }

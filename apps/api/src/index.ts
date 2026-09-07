@@ -14,6 +14,7 @@ import { reconcileChain, sweepExpiries } from "./cron";
 import { type Env, required } from "./env";
 import { fail } from "./http";
 import { type BountyVariables, bountyRoutes } from "./routes/bounties";
+import { userRoutes } from "./routes/users";
 import { db } from "./services";
 import { databaseStore, type Store } from "./store";
 import { githubDispatcher } from "./webhooks/dispatch";
@@ -68,6 +69,7 @@ app.get("/v1/config", (c) => {
 });
 
 app.route("/v1/bounties", bountyRoutes);
+app.route("/v1/users", userRoutes);
 
 /**
  * GitHub deliveries. Verified against the app's webhook secret, written down, then acted

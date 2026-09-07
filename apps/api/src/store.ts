@@ -9,13 +9,16 @@ import {
   type Bounty,
   type BountyFilter,
   type BountyListing,
+  bountiesForFunder,
   bountyById,
   bountyByJobId,
   bountyWithRepo,
   type Claim,
   type ClaimInput,
+  type ClaimListing,
   claimBounty,
   claimById,
+  claimsForUser,
   completeBounty,
   confirmBountyFunded,
   createBounty,
@@ -42,20 +45,27 @@ import {
   type NewBountyInput,
   openSettlement,
   openSubmissionsFor,
+  type Repo,
+  type RepoSettings,
   type RepositoryInput,
   type RepoWithInstallation,
   type ReputationInput,
   readChainCursor,
   recordReputationEvent,
+  reposForUser,
   repoWithInstallationByGithubId,
   repoWithInstallationById,
   type Settlement,
   type SettlementInput,
+  type SettlementListing,
   type StaleClaim,
   type Submission,
   type SubmissionInput,
+  setPayoutAddress,
+  setRepoSettings,
   settleClaim,
   settlementForBounty,
+  settlementsForUser,
   stakeInUse,
   submissionForPr,
   syncRepos,
@@ -88,10 +98,13 @@ export interface Store {
   markInstallationReposUninstalled(installationId: string): Promise<void>;
   repoByGithubId(githubRepoId: bigint): Promise<RepoWithInstallation | undefined>;
   repoById(repoId: string): Promise<RepoWithInstallation | undefined>;
+  reposForUser(userId: string, login: string): Promise<RepoWithInstallation[]>;
+  setRepoSettings(repoId: string, settings: RepoSettings): Promise<Repo | undefined>;
 
   upsertUser(input: UserInput): Promise<User>;
   userByLogin(login: string): Promise<User | undefined>;
   userById(id: string): Promise<User | undefined>;
+  setPayoutAddress(userId: string, payoutAddress: string): Promise<void>;
   agentByGithubLogin(login: string): Promise<Agent | undefined>;
 
   activeBountyForIssue(repoId: string, issueNumber: number): Promise<Bounty | undefined>;
@@ -103,6 +116,9 @@ export interface Store {
     extra?: { settleTxHash?: string; jobId?: bigint },
   ): Promise<boolean>;
   expireBounties(now: Date): Promise<Bounty[]>;
+  bountiesForFunder(funderUserId: string): Promise<BountyListing[]>;
+  claimsForUser(userId: string): Promise<ClaimListing[]>;
+  settlementsForUser(userId: string): Promise<SettlementListing[]>;
   bountyWithRepo(id: string): Promise<BountyListing | undefined>;
   listBounties(filter: BountyFilter): Promise<BountyListing[]>;
   createBounty(input: NewBountyInput): Promise<Bounty>;
@@ -169,10 +185,13 @@ export function databaseStore(db: Database): Store {
       markInstallationReposUninstalled(db, installationId),
     repoByGithubId: (githubRepoId) => repoWithInstallationByGithubId(db, githubRepoId),
     repoById: (repoId) => repoWithInstallationById(db, repoId),
+    reposForUser: (userId, login) => reposForUser(db, userId, login),
+    setRepoSettings: (repoId, settings) => setRepoSettings(db, repoId, settings),
 
     upsertUser: (input) => upsertUser(db, input),
     userByLogin: (login) => userByLogin(db, login),
     userById: (id) => userById(db, id),
+    setPayoutAddress: (userId, payoutAddress) => setPayoutAddress(db, userId, payoutAddress),
     agentByGithubLogin: (login) => agentByGithubLogin(db, login),
 
     activeBountyForIssue: (repoId, issueNumber) => activeBountyForIssue(db, repoId, issueNumber),
@@ -180,6 +199,9 @@ export function databaseStore(db: Database): Store {
     bountyByJobId: (jobId) => bountyByJobId(db, jobId),
     forceBountyStatus: (id, to, extra) => forceBountyStatus(db, id, to, extra),
     expireBounties: (now) => expireBounties(db, now),
+    bountiesForFunder: (funderUserId) => bountiesForFunder(db, funderUserId),
+    claimsForUser: (userId) => claimsForUser(db, userId),
+    settlementsForUser: (userId) => settlementsForUser(db, userId),
     bountyWithRepo: (id) => bountyWithRepo(db, id),
     listBounties: (filter) => listBounties(db, filter),
     createBounty: (input) => createBounty(db, input),

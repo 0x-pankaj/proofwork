@@ -1,6 +1,6 @@
-import { eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray, or, sql } from "drizzle-orm";
 import type { Database } from "../client";
-import { type Installation, installations, type Repo, repos } from "../schema";
+import { type Installation, installations, type Repo, type RepoPolicy, repos } from "../schema";
 
 export interface RepositoryInput {
   githubRepoId: bigint;
@@ -107,5 +107,55 @@ export async function repoWithInstallationById(
     .innerJoin(installations, eq(repos.installationId, installations.id))
     .where(eq(repos.id, repoId))
     .limit(1);
+  return row;
+}
+
+/**
+ * The repositories a signed-in user may act on: the ones installed under their own
+ * account, plus any where they are recorded as the maintainer. Private repository names
+ * are not something to hand out, so this is a filter rather than a full listing.
+ */
+export async function reposForUser(
+  db: Database,
+  userId: string,
+  login: string,
+): Promise<RepoWithInstallation[]> {
+  return db
+    .select({ repo: repos, installation: installations })
+    .from(repos)
+    .innerJoin(installations, eq(repos.installationId, installations.id))
+    .where(
+      and(
+        eq(repos.installed, true),
+        or(eq(installations.accountLogin, login), eq(repos.maintainerUserId, userId)),
+      ),
+    );
+}
+
+export interface RepoSettings {
+  policy?: RepoPolicy;
+  maintainerPayoutAddress?: string | null;
+  maintainerUserId?: string | null;
+}
+
+/** A maintainer's terms. Who is allowed to call this is decided at the route. */
+export async function setRepoSettings(
+  db: Database,
+  repoId: string,
+  settings: RepoSettings,
+): Promise<Repo | undefined> {
+  const [row] = await db
+    .update(repos)
+    .set({
+      ...(settings.policy ? { policy: settings.policy } : {}),
+      ...(settings.maintainerPayoutAddress !== undefined
+        ? { maintainerPayoutAddress: settings.maintainerPayoutAddress }
+        : {}),
+      ...(settings.maintainerUserId !== undefined
+        ? { maintainerUserId: settings.maintainerUserId }
+        : {}),
+    })
+    .where(eq(repos.id, repoId))
+    .returning();
   return row;
 }

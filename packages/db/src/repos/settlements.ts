@@ -1,6 +1,16 @@
-import { eq, sql } from "drizzle-orm";
+import { desc, eq, sql } from "drizzle-orm";
 import type { Database } from "../client";
-import { agents, reputationEvents, type Settlement, settlements } from "../schema";
+import {
+  agents,
+  type Bounty,
+  bounties,
+  claims,
+  type Repo,
+  repos,
+  reputationEvents,
+  type Settlement,
+  settlements,
+} from "../schema";
 
 /**
  * The payout ledger. There is exactly one settlement row per bounty — the unique index
@@ -117,4 +127,25 @@ export async function recordReputationEvent(db: Database, input: ReputationInput
     .update(agents)
     .set({ reputationScore: sql`${agents.reputationScore} + ${input.score}` })
     .where(eq(agents.id, input.agentId));
+}
+
+export interface SettlementListing {
+  settlement: Settlement;
+  bounty: Bounty;
+  repo: Repo;
+}
+
+/** Payouts to one person, which is the answer to "have I been paid yet". */
+export async function settlementsForUser(
+  db: Database,
+  userId: string,
+): Promise<SettlementListing[]> {
+  return db
+    .select({ settlement: settlements, bounty: bounties, repo: repos })
+    .from(settlements)
+    .innerJoin(claims, eq(settlements.claimId, claims.id))
+    .innerJoin(bounties, eq(settlements.bountyId, bounties.id))
+    .innerJoin(repos, eq(bounties.repoId, repos.id))
+    .where(eq(claims.userId, userId))
+    .orderBy(desc(settlements.createdAt));
 }

@@ -220,3 +220,16 @@ export async function expireBounties(db: Database, now: Date): Promise<Bounty[]>
     .where(and(lt(bounties.expiresAt, now), inArray(bounties.status, EXPIRABLE)))
     .returning();
 }
+
+/** Everything one person has funded, newest first. */
+export async function bountiesForFunder(
+  db: Database,
+  funderUserId: string,
+): Promise<BountyListing[]> {
+  return db
+    .select({ bounty: bounties, repo: repos })
+    .from(bounties)
+    .innerJoin(repos, eq(bounties.repoId, repos.id))
+    .where(eq(bounties.funderUserId, funderUserId))
+    .orderBy(desc(bounties.createdAt));
+}

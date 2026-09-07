@@ -27,6 +27,19 @@ export function secretsMatch(a: string, b: string): boolean {
   return difference === 0;
 }
 
+/** The key alone. Used by sign-in, which is the one call that has no user yet. */
+export const internalKeyOnly = createMiddleware<{
+  Bindings: Env;
+  Variables: InternalVariables;
+}>(async (c, next) => {
+  const presented = c.req.header(INTERNAL_KEY_HEADER) ?? "";
+  if (!secretsMatch(presented, required(c.env, "INTERNAL_API_KEY"))) {
+    return fail(c, 401, "unauthorized", "this route is not public");
+  }
+  await next();
+});
+
+/** The key plus the user the web app is acting for. */
 export const internalOnly = createMiddleware<{
   Bindings: Env;
   Variables: InternalVariables;
