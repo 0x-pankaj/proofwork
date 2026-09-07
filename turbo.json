@@ -32,27 +32,42 @@
     "REQUIRE_AGENT_STAKE",
     "COMPLIANCE_MODE",
     "CIRCLE_VERIFIER_ADDRESS",
-    "CIRCLE_TREASURY_ADDRESS"
+    "CIRCLE_TREASURY_ADDRESS",
+    "AUTH_GITHUB_ID",
+    "AUTH_GITHUB_SECRET"
   ],
-  "globalDependencies": ["packages/config/**"],
+  "globalDependencies": [
+    "packages/config/**"
+  ],
   "tasks": {
     "build": {
-      "dependsOn": ["^build"],
-      "outputs": ["dist/**", ".next/**", "!.next/cache/**", ".open-next/**"]
+      "dependsOn": [
+        "^build"
+      ],
+      "outputs": [
+        "dist/**",
+        ".next/**",
+        "!.next/cache/**",
+        ".open-next/**"
+      ]
     },
     "dev": {
       "cache": false,
       "persistent": true
     },
     "typecheck": {
-      "dependsOn": ["^build"],
+      "dependsOn": [
+        "^build"
+      ],
       "outputs": []
     },
     "lint": {
       "outputs": []
     },
     "test": {
-      "dependsOn": ["^build"],
+      "dependsOn": [
+        "^build"
+      ],
       "outputs": []
     }
   }
