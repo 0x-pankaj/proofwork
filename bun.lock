@@ -37,6 +37,17 @@
       "name": "@proofwork/contracts",
       "version": "0.0.0",
     },
+    "packages/core": {
+      "name": "@proofwork/core",
+      "version": "0.0.0",
+      "dependencies": {
+        "@proofwork/chain": "workspace:*",
+        "viem": "^2.56.3",
+      },
+      "devDependencies": {
+        "@proofwork/config": "workspace:*",
+      },
+    },
     "packages/db": {
       "name": "@proofwork/db",
       "version": "0.0.0",
@@ -152,6 +163,8 @@
     "@proofwork/config": ["@proofwork/config@workspace:packages/config"],
 
     "@proofwork/contracts": ["@proofwork/contracts@workspace:packages/contracts"],
+
+    "@proofwork/core": ["@proofwork/core@workspace:packages/core"],
 
     "@proofwork/db": ["@proofwork/db@workspace:packages/db"],
 
