@@ -42,7 +42,8 @@ export class CircleCompliance {
   constructor(private readonly config: ComplianceConfig) {
     this.mode = config.mode ?? "wallet-only";
     this.baseUrl = config.baseUrl ?? CIRCLE_API_BASE_URL;
-    this.fetchImpl = config.fetch ?? fetch;
+    // Bound: workerd rejects `fetch` called with a class instance as its `this`.
+    this.fetchImpl = config.fetch ?? fetch.bind(globalThis);
   }
 
   async screenAddress(address: string, idempotencyKey?: string): Promise<ScreeningOutcome> {

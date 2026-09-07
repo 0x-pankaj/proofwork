@@ -109,7 +109,8 @@ export class GitHubAppAuth {
     if (!credentials.privateKey) throw new Error("GITHUB_APP_PRIVATE_KEY is required");
     this.credentials = credentials;
     this.baseUrl = options.baseUrl ?? GITHUB_API_BASE_URL;
-    this.fetchImpl = options.fetch ?? fetch;
+    // Bound: workerd rejects `fetch` called with a class instance as its `this`.
+    this.fetchImpl = options.fetch ?? fetch.bind(globalThis);
     this.now = options.now ?? Date.now;
   }
 

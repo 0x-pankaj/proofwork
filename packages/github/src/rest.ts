@@ -90,7 +90,8 @@ export class GitHubClient {
     options: { baseUrl?: string; fetch?: typeof fetch } = {},
   ) {
     this.baseUrl = options.baseUrl ?? GITHUB_API_BASE_URL;
-    this.fetchImpl = options.fetch ?? fetch;
+    // Bound: workerd rejects `fetch` called with a class instance as its `this`.
+    this.fetchImpl = options.fetch ?? fetch.bind(globalThis);
   }
 
   /**
