@@ -1,0 +1,4 @@
+{
+  "extends": "@proofwork/config/tsconfig.library.json",
+  "include": ["src/**/*.ts", "drizzle.config.ts"]
+}

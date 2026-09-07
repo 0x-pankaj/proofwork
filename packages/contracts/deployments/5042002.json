@@ -1,0 +1,10 @@
+{
+  "ProofworkJobs": "0x3Bc728A813a7aBe0cB898fd63967525e92353D85",
+  "block": 60863418,
+  "chainId": 5042002,
+  "deployer": "0xb57af3feBa9D6759CE38452247e066981DddEbb3",
+  "feeBps": 300,
+  "owner": "0xb57af3feBa9D6759CE38452247e066981DddEbb3",
+  "paymentToken": "0x3600000000000000000000000000000000000000",
+  "treasury": "0xb57af3feBa9D6759CE38452247e066981DddEbb3"
+}
