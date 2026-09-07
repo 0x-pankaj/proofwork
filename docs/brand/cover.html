@@ -1,0 +1,56 @@
+<!doctype html>
+<meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  html, body { margin: 0; padding: 0; }
+  body {
+    width: 1200px; height: 630px; background: #14161d; color: #f0f1f4;
+    font-family: Geist, ui-sans-serif, system-ui, sans-serif;
+    display: flex; flex-direction: column; justify-content: space-between;
+    padding: 64px 72px; box-sizing: border-box; position: relative; overflow: hidden;
+  }
+  /* A faint ledger rule behind everything, the way the product looks. */
+  .rules { position: absolute; inset: 0; opacity: .5;
+    background: repeating-linear-gradient(to bottom, transparent 0 104px, #23262f 104px 105px); }
+  .row { display: flex; align-items: center; gap: 16px; position: relative; }
+  .word { font-size: 30px; font-weight: 600; letter-spacing: -.02em; }
+  h1 { position: relative; margin: 0; font-size: 62px; line-height: 1.08; font-weight: 600;
+       letter-spacing: -.035em; max-width: 16ch; text-wrap: balance; }
+  .foot { position: relative; display: flex; align-items: flex-end; justify-content: space-between; gap: 40px; }
+  .split { display: flex; gap: 48px; }
+  .cell { display: flex; flex-direction: column; gap: 8px; }
+  .label { font-size: 17px; color: #8b8f9b; }
+  .figure { font-family: "Geist Mono", ui-monospace, monospace; font-size: 34px;
+            font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+  .paid { color: #46dc9a; }
+  .note { text-align: right; font-size: 18px; color: #8b8f9b; line-height: 1.5; }
+  .note b { color: #f0f1f4; font-weight: 500; }
+  svg { width: 44px; height: 44px; }
+  path, line { fill: none; stroke-width: 26; stroke-linecap: round; }
+  .node { fill: #14161d; stroke-width: 24; }
+</style>
+<div class="rules"></div>
+
+<div class="row">
+  <svg viewBox="0 0 300 300">
+    <line style="stroke:#e9ebf0" x1="78" y1="60" x2="78" y2="240"/>
+    <path style="stroke:#6d8cff" d="M222 60 v40 a70 70 0 0 1 -70 70 h-74"/>
+    <circle class="node" style="stroke:#e9ebf0" cx="78" cy="46" r="20"/>
+    <circle class="node" style="stroke:#6d8cff" cx="222" cy="46" r="20"/>
+    <circle class="node" style="fill:#46dc9a;stroke:#46dc9a" cx="78" cy="254" r="26"/>
+  </svg>
+  <span class="word">Proofwork</span>
+</div>
+
+<h1>Bounties that pay themselves the moment a maintainer merges.</h1>
+
+<div class="foot">
+  <div class="split">
+    <div class="cell"><span class="label">Contributor</span><span class="figure paid">$170.00</span></div>
+    <div class="cell"><span class="label">Reviewer</span><span class="figure paid">$30.00</span></div>
+    <div class="cell"><span class="label">Protocol fee</span><span class="figure">$6.00</span></div>
+  </div>
+  <p class="note">A $200 bounty, escrowed in USDC.<br><b>Settled in one transaction on Arc.</b><br>No invoice, no payout run.</p>
+</div>
