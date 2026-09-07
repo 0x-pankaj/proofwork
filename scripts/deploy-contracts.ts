@@ -48,6 +48,23 @@ if (!dryRun) {
   }
 }
 
+/**
+ * Foundry opens the terminal directly to prompt for the keystore password. Without a
+ * controlling terminal it fails late, after simulating, with a bare "os error 6".
+ * Catch that here and say what to do instead.
+ */
+if (!dryRun && !process.stdin.isTTY) {
+  console.error(
+    "No terminal attached, so Foundry cannot prompt for the keystore password.\n" +
+      "Run this in a normal terminal window:\n\n" +
+      "  cd " +
+      process.cwd() +
+      " && bun run contracts:deploy:testnet\n\n" +
+      "To check the setup without deploying, add --dry, which needs no password.",
+  );
+  process.exit(1);
+}
+
 console.log(`${dryRun ? "simulating" : "deploying"} to arc ${network} as ${sender}\n`);
 
 const forge = Bun.spawn(["forge", ...args], {
