@@ -28,8 +28,9 @@ export interface CircleClient {
   createContractExecutionTransaction(input: {
     walletId: string;
     contractAddress: string;
-    abiFunctionSignature: string;
-    abiParameters: (string | number | boolean)[];
+    abiFunctionSignature?: string;
+    abiParameters?: (string | number | boolean)[];
+    callData?: string;
     fee: { type: "level"; config: { feeLevel: FeeLevel } };
     idempotencyKey?: string;
   }): Promise<{ data?: { id?: string } | null } | null>;
@@ -48,9 +49,15 @@ export interface CircleClient {
 export interface ContractExecutionRequest {
   walletId: string;
   contractAddress: string;
-  /** For example `settle(uint256,address,bytes32,bytes32)`. */
-  abiFunctionSignature: string;
-  abiParameters: (string | number | boolean)[];
+  /**
+   * For example `settle(uint256,address,bytes32,bytes32)`. Mutually exclusive with
+   * `callData`: pass a signature when the call is written here, and pre-encoded bytes
+   * when they came from somewhere that already knows the ABI.
+   */
+  abiFunctionSignature?: string;
+  abiParameters?: (string | number | boolean)[];
+  /** Pre-encoded calldata, for example the bytes the API hands a funder's browser. */
+  callData?: string;
   /**
    * A UUID Circle uses to collapse retries. Passing the bounty id makes a replayed
    * settlement a no-op at Circle's end as well as ours.
@@ -108,11 +115,19 @@ export class CircleWallets {
 
   /** Submits a contract call and returns Circle's transaction id to poll. */
   async executeContract(request: ContractExecutionRequest): Promise<{ id: string }> {
+    if (!request.callData && !request.abiFunctionSignature) {
+      throw new Error("a contract execution needs either a function signature or calldata");
+    }
+
     const response = await this.client.createContractExecutionTransaction({
       walletId: request.walletId,
       contractAddress: request.contractAddress,
-      abiFunctionSignature: request.abiFunctionSignature,
-      abiParameters: request.abiParameters,
+      ...(request.callData
+        ? { callData: request.callData }
+        : {
+            abiFunctionSignature: request.abiFunctionSignature,
+            abiParameters: request.abiParameters ?? [],
+          }),
       fee: { type: "level", config: { feeLevel: request.feeLevel ?? "MEDIUM" } },
       ...(request.idempotencyKey ? { idempotencyKey: request.idempotencyKey } : {}),
     });

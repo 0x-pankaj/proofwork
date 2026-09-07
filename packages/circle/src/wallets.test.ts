@@ -127,3 +127,31 @@ describe("waitForTransaction", () => {
     expect(succeeded({ id: "1", state: "CONFIRMED" })).toBe(false);
   });
 });
+
+describe("calldata execution", () => {
+  it("sends pre-encoded bytes when given them", async () => {
+    const create = vi.fn(
+      async (_input: Parameters<CircleClient["createContractExecutionTransaction"]>[0]) => ({
+        data: { id: "circle-tx-1" },
+      }),
+    );
+    const circle = client(["COMPLETE"], { createContractExecutionTransaction: create });
+
+    await wallets(circle).executeContract({
+      walletId: "wallet-1",
+      contractAddress: "0x36",
+      callData: "0xa9059cbb",
+    });
+
+    expect(create).toHaveBeenCalledWith(expect.objectContaining({ callData: "0xa9059cbb" }));
+    expect(create.mock.calls[0]?.[0]).not.toHaveProperty("abiFunctionSignature");
+  });
+
+  it("refuses a call that says nothing about what to execute", async () => {
+    const circle = client(["COMPLETE"]);
+
+    await expect(
+      wallets(circle).executeContract({ walletId: "wallet-1", contractAddress: "0x36" }),
+    ).rejects.toThrow(/function signature or calldata/);
+  });
+});
