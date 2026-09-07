@@ -145,3 +145,34 @@ describe("write routes", () => {
     expect(res.status).toBe(400);
   });
 });
+
+describe("GET /v1/bounties/:id/reclaim", () => {
+  /**
+   * Public on purpose. It was internal once, and because the web app renders this during
+   * the bounty page's own render, the missing acting-user header turned every live bounty
+   * page into a 500 rather than a hidden panel.
+   */
+  it("answers without an internal key or an acting user", async () => {
+    const res = await serve(seeded()).request("/v1/bounties/bounty-1/reclaim", {}, env);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { call: { to: string } };
+    expect(body).toMatchObject({ reclaimable: true, kind: "cancel" });
+    expect(body.call.to).toMatch(/^0x[0-9a-fA-F]{40}$/);
+  });
+
+  it("returns budget and fee together, which is what the contract sends back", async () => {
+    const res = await serve(seeded()).request("/v1/bounties/bounty-1/reclaim", {}, env);
+    const body = (await res.json()) as { amountUsdc: string };
+    expect(body.amountUsdc).toBe(String(200_000_000n + 6_000_000n));
+  });
+
+  it("refuses a settled bounty, whose escrow is already spent", async () => {
+    const res = await serve(seeded()).request("/v1/bounties/bounty-2/reclaim", {}, env);
+    expect(await res.json()).toMatchObject({ reclaimable: false });
+  });
+
+  it("404s for a bounty that does not exist", async () => {
+    const res = await serve(seeded()).request("/v1/bounties/nope/reclaim", {}, env);
+    expect(res.status).toBe(404);
+  });
+});

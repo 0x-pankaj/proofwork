@@ -282,8 +282,13 @@ bountyRoutes.post(
  * A funder whose bounty went nowhere should not have to open a block explorer to be made
  * whole. The API decides which of the two unwinding calls applies and hands back calldata;
  * the funder signs it in their own wallet, exactly as they signed the funding.
+ *
+ * Public, unlike the other money routes. Everything here is already public — the bounty, its
+ * deadline, the job id — and the calldata authorises nobody: `cancel` reverts for anyone but
+ * the funder, and `claimRefund` is meant to be open. Hiding it behind our key would only make
+ * a permissionless refund depend on us being up.
  */
-bountyRoutes.get("/:id/reclaim", internalOnly, async (c) => {
+bountyRoutes.get("/:id/reclaim", async (c) => {
   const store = c.get("store")();
   const bounty = await store.bountyById(c.req.param("id"));
   if (!bounty) return fail(c, 404, "not_found", "no such bounty");

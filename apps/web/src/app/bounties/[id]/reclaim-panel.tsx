@@ -55,9 +55,10 @@ export function ReclaimPanel({
 
       setStage("confirming");
       await waitForTransactionReceipt(config, { hash });
+      // Null when nobody is signed in; the sweeper reconciles it from the chain instead.
       const result = await confirmReclaim(bountyId, hash);
 
-      setTxUrl(result.txUrl);
+      setTxUrl(result?.txUrl ?? null);
       setStage("done");
       router.refresh();
     } catch (cause) {
