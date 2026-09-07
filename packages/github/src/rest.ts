@@ -189,6 +189,30 @@ export class GitHubClient {
     return toPullRequest(data);
   }
 
+  /**
+   * A pull request as a unified diff.
+   *
+   * GitHub serves this from the same path with a different `accept`, and it comes back as
+   * text rather than JSON, which is why it does not go through `send`.
+   */
+  async getPullRequestDiff(repo: RepoRef, prNumber: number): Promise<string> {
+    const path = `/repos/${repo.fullName}/pulls/${prNumber}`;
+    const token = await this.auth.installationToken(repo.installationId);
+    const response = await this.fetchImpl(`${this.baseUrl}${path}`, {
+      headers: {
+        authorization: `Bearer ${token}`,
+        accept: "application/vnd.github.v3.diff",
+        "x-github-api-version": GITHUB_API_VERSION,
+        "user-agent": GITHUB_USER_AGENT,
+      },
+    });
+
+    if (!response.ok) {
+      throw new GitHubApiError(response.status, path, await response.text());
+    }
+    return response.text();
+  }
+
   async listIssueComments(repo: RepoRef, issueNumber: number): Promise<IssueComment[]> {
     const data = await this.request<IssueCommentPayload[]>(
       repo,

@@ -1,8 +1,11 @@
 import { createGatewayMiddleware } from "@circle-fin/x402-batching/server";
 import type { Database } from "@proofwork/db";
+import type { GitHubClient, RepoRef } from "@proofwork/github";
 import express, { type Express, type NextFunction, type Request, type Response } from "express";
 import { type Env, facilitatorUrl, required } from "./env";
 import { recording } from "./payments";
+import { price } from "./price";
+import { REVIEW_PRICE_USDC, reviewHandler } from "./review";
 import { requireStake, stakeHandler } from "./stake";
 
 /**
@@ -19,6 +22,9 @@ import { requireStake, stakeHandler } from "./stake";
 export interface AppDeps {
   env: Env;
   db: Database;
+  github: GitHubClient;
+  /** Which installation can read a repository, so a private diff stays readable. */
+  installationFor(repoFullName: string): Promise<RepoRef | undefined>;
 }
 
 export function createApp(deps: AppDeps): Express {
@@ -36,6 +42,18 @@ export function createApp(deps: AppDeps): Express {
   app.get("/health", (_req, res) => {
     res.json({ ok: true, service: "proofwork-x402", network: env.ARC_NETWORK ?? "testnet" });
   });
+
+  /** A pre-review of a pull request against the issue it claims to close. */
+  app.post(
+    "/v1/review",
+    gateway.require(price(REVIEW_PRICE_USDC)),
+    recording(deps.db, "/v1/review"),
+    reviewHandler({
+      env,
+      github: deps.github,
+      installationFor: deps.installationFor,
+    }),
+  );
 
   /**
    * The claim stake. Priced per request from the repository's policy, which is why the

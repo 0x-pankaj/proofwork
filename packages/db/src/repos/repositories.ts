@@ -110,6 +110,20 @@ export async function repoWithInstallationById(
   return row;
 }
 
+/** The same lookup by `owner/name`, which is how an agent names a repository. */
+export async function repoWithInstallationByFullName(
+  db: Database,
+  fullName: string,
+): Promise<RepoWithInstallation | undefined> {
+  const [row] = await db
+    .select({ repo: repos, installation: installations })
+    .from(repos)
+    .innerJoin(installations, eq(repos.installationId, installations.id))
+    .where(eq(repos.fullName, fullName))
+    .limit(1);
+  return row;
+}
+
 /**
  * The repositories a signed-in user may act on: the ones installed under their own
  * account, plus any where they are recorded as the maintainer. Private repository names

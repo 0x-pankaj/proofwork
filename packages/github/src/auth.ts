@@ -95,13 +95,19 @@ export function privateKeyDer(pem: string): Uint8Array<ArrayBuffer> {
   return normalised.includes("BEGIN RSA PRIVATE KEY") ? pkcs1ToPkcs8(der) : der;
 }
 
+/**
+ * The imported signing key. Named off `importKey` rather than the global `CryptoKey`,
+ * which Workers declare and Node's types do not, so this package compiles under both.
+ */
+type SigningKey = Awaited<ReturnType<typeof crypto.subtle.importKey>>;
+
 /** Signs app JWTs and exchanges them for installation tokens. */
 export class GitHubAppAuth {
   readonly baseUrl: string;
   private readonly credentials: GitHubAppCredentials;
   private readonly fetchImpl: typeof fetch;
   private readonly now: () => number;
-  private signingKey: Promise<CryptoKey> | undefined;
+  private signingKey: Promise<SigningKey> | undefined;
   private readonly installationTokens = new Map<number, CachedToken>();
 
   constructor(credentials: GitHubAppCredentials, options: GitHubAuthOptions = {}) {
@@ -177,7 +183,7 @@ export class GitHubAppAuth {
     this.installationTokens.delete(installationId);
   }
 
-  private key(): Promise<CryptoKey> {
+  private key(): Promise<SigningKey> {
     if (!this.signingKey) {
       this.signingKey = crypto.subtle.importKey(
         "pkcs8",
