@@ -22,7 +22,8 @@
     "e2e:testnet": "bun run scripts/e2e-testnet.ts",
     "contracts:export": "bun run --cwd packages/contracts export",
     "circle:setup": "bun run scripts/circle-setup.ts",
-    "contracts:deploy:mainnet": "bun run scripts/deploy-contracts.ts mainnet"
+    "contracts:deploy:mainnet": "bun run scripts/deploy-contracts.ts mainnet",
+    "github:sync": "bun run scripts/sync-installations.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.12",
@@ -31,6 +32,8 @@
     "@proofwork/chain": "workspace:*",
     "@proofwork/circle": "workspace:*",
     "@proofwork/core": "workspace:*",
+    "@proofwork/db": "workspace:*",
+    "@proofwork/github": "workspace:*",
     "@types/bun": "^1.4.1",
     "drizzle-kit": "^0.31.10",
     "turbo": "^2.10.12",

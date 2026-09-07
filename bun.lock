@@ -16,6 +16,8 @@
         "@proofwork/chain": "workspace:*",
         "@proofwork/circle": "workspace:*",
         "@proofwork/core": "workspace:*",
+        "@proofwork/db": "workspace:*",
+        "@proofwork/github": "workspace:*",
         "@types/bun": "^1.4.1",
         "drizzle-kit": "^0.31.10",
         "turbo": "^2.10.12",

@@ -74,6 +74,13 @@ export class GitHubApiError extends Error {
   }
 }
 
+export interface InstallationSummary {
+  id: number;
+  accountLogin: string;
+  accountType: string;
+  suspended: boolean;
+}
+
 export class GitHubClient {
   private readonly baseUrl: string;
   private readonly fetchImpl: typeof fetch;
@@ -84,6 +91,41 @@ export class GitHubClient {
   ) {
     this.baseUrl = options.baseUrl ?? GITHUB_API_BASE_URL;
     this.fetchImpl = options.fetch ?? fetch;
+  }
+
+  /**
+   * Every installation of the app. Answered with the app JWT rather than an installation
+   * token, and used by the sync script that recovers from a missed delivery.
+   */
+  async listInstallations(): Promise<InstallationSummary[]> {
+    const data = await this.send<InstallationPayload[]>(
+      `Bearer ${await this.auth.appJwt()}`,
+      "GET",
+      "/app/installations?per_page=100",
+    );
+    return data.map((installation) => ({
+      id: installation.id,
+      accountLogin: installation.account?.login ?? "unknown",
+      accountType: installation.account?.type ?? "User",
+      suspended: installation.suspended_at !== null && installation.suspended_at !== undefined,
+    }));
+  }
+
+  /** The repositories one installation can see. */
+  async listInstallationRepositories(installationId: number): Promise<Repository[]> {
+    const token = await this.auth.installationToken(installationId);
+    const data = await this.send<{ repositories: RepositoryPayload[] }>(
+      `Bearer ${token}`,
+      "GET",
+      "/installation/repositories?per_page=100",
+    );
+    return data.repositories.map((repository) => ({
+      id: repository.id,
+      fullName: repository.full_name,
+      private: repository.private,
+      defaultBranch: repository.default_branch,
+      ownerLogin: repository.owner.login,
+    }));
   }
 
   async getRepository(repo: RepoRef): Promise<Repository> {
@@ -194,10 +236,19 @@ export class GitHubClient {
     body?: unknown,
   ): Promise<T> {
     const token = await this.auth.installationToken(repo.installationId);
+    return this.send<T>(`Bearer ${token}`, method, path, body);
+  }
+
+  private async send<T>(
+    authorization: string,
+    method: string,
+    path: string,
+    body?: unknown,
+  ): Promise<T> {
     const response = await this.fetchImpl(`${this.baseUrl}${path}`, {
       method,
       headers: {
-        authorization: `Bearer ${token}`,
+        authorization,
         accept: "application/vnd.github+json",
         "x-github-api-version": GITHUB_API_VERSION,
         "user-agent": GITHUB_USER_AGENT,
@@ -219,6 +270,12 @@ interface RepositoryPayload {
   private: boolean;
   default_branch: string;
   owner: { login: string };
+}
+
+interface InstallationPayload {
+  id: number;
+  account?: { login: string; type?: string } | null;
+  suspended_at?: string | null;
 }
 
 interface IssuePayload {
