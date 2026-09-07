@@ -5,6 +5,7 @@ import type {
   Installation,
   RepositoryInput,
   RepoWithInstallation,
+  Submission,
   User,
   X402Payment,
 } from "@proofwork/db";
@@ -21,6 +22,7 @@ export interface FakeStore extends Store {
   agents: Map<string, Agent>;
   bounties: Map<string, Bounty>;
   claims: Claim[];
+  submissions: Submission[];
   payments: Map<string, X402Payment>;
   synced: Array<{ installationId: string; repositories: RepositoryInput[] }>;
   uninstalledRepoIds: bigint[];
@@ -33,6 +35,7 @@ export interface FakeStoreSeed {
   agents?: Agent[];
   bounties?: Bounty[];
   claims?: Claim[];
+  submissions?: Submission[];
   payments?: X402Payment[];
 }
 
@@ -131,6 +134,23 @@ export function fakeBounty(overrides: Partial<Bounty> = {}): Bounty {
   };
 }
 
+export function fakeSubmission(overrides: Partial<Submission> = {}): Submission {
+  return {
+    id: "submission-1",
+    bountyId: "bounty-1",
+    claimId: "claim-1",
+    prNumber: 21,
+    prUrl: "https://github.com/0x-pankaj/proofwork/pull/21",
+    headSha: "a".repeat(40),
+    mergeSha: null,
+    mergedAt: null,
+    deliverableHash: null,
+    status: "open",
+    createdAt: new Date("2026-09-07T00:00:00Z"),
+    ...overrides,
+  };
+}
+
 export function fakeStakePayment(overrides: Partial<X402Payment> = {}): X402Payment {
   return {
     id: "payment-1",
@@ -174,6 +194,7 @@ export function createFakeStore(seed: FakeStoreSeed | RepoWithInstallation[] = {
     agents: new Map((seeded.agents ?? []).map((agent) => [agent.githubLogin, agent])),
     bounties: new Map((seeded.bounties ?? []).map((bounty) => [bounty.id, bounty])),
     claims: [...(seeded.claims ?? [])],
+    submissions: [...(seeded.submissions ?? [])],
     payments: new Map((seeded.payments ?? []).map((payment) => [payment.id, payment])),
     synced: [],
     uninstalledRepoIds: [],
@@ -305,6 +326,61 @@ export function createFakeStore(seed: FakeStoreSeed | RepoWithInstallation[] = {
       if (!claim) return false;
       store.claims[index] = { ...claim, status: "withdrawn" };
       return true;
+    },
+
+    async upsertSubmission(input) {
+      const index = store.submissions.findIndex(
+        (submission) =>
+          submission.bountyId === input.bountyId && submission.prNumber === input.prNumber,
+      );
+      const existing = store.submissions[index];
+      const submission = fakeSubmission({
+        ...existing,
+        ...input,
+        id: existing?.id ?? "submission-1",
+      });
+      if (existing) store.submissions[index] = submission;
+      else store.submissions.push(submission);
+      return submission;
+    },
+
+    async submissionForPr(bountyId, prNumber) {
+      return store.submissions.find(
+        (submission) => submission.bountyId === bountyId && submission.prNumber === prNumber,
+      );
+    },
+
+    async mergedSubmissionFor(bountyId) {
+      return store.submissions.find(
+        (submission) => submission.bountyId === bountyId && submission.status === "merged",
+      );
+    },
+
+    async openSubmissionsFor(bountyId) {
+      return store.submissions.filter(
+        (submission) => submission.bountyId === bountyId && submission.status === "open",
+      );
+    },
+
+    async markSubmissionMerged(id, input) {
+      const index = store.submissions.findIndex((submission) => submission.id === id);
+      const submission = store.submissions[index];
+      if (!submission) return;
+      store.submissions[index] = { ...submission, status: "merged", ...input };
+    },
+
+    async markSubmissionClosed(id) {
+      const index = store.submissions.findIndex((submission) => submission.id === id);
+      const submission = store.submissions[index];
+      if (!submission) return;
+      store.submissions[index] = { ...submission, status: "closed" };
+    },
+
+    async settleClaim(claimId, status, stakeStatus) {
+      const index = store.claims.findIndex((claim) => claim.id === claimId);
+      const claim = store.claims[index];
+      if (!claim) return;
+      store.claims[index] = { ...claim, status, stakeStatus };
     },
 
     async x402PaymentById(id) {

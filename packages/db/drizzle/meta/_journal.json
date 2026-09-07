@@ -15,6 +15,13 @@
       "when": 1788764934456,
       "tag": "0001_nervous_justin_hammer",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1788765861072,
+      "tag": "0002_equal_joshua_kane",
+      "breakpoints": true
     }
   ]
 }

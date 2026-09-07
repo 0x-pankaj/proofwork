@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "submissions_one_per_pr_idx" ON "submissions" USING btree ("bounty_id","pr_number");

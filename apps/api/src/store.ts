@@ -14,18 +14,28 @@ import {
   type Installation,
   type InstallationInput,
   installationByGithubId,
+  type MergeInput,
   markInstallationReposUninstalled,
   markReposUninstalled,
+  markSubmissionClosed,
+  markSubmissionMerged,
+  mergedSubmissionFor,
   moveBountyStatus,
+  openSubmissionsFor,
   type RepositoryInput,
   type RepoWithInstallation,
   repoWithInstallationByGithubId,
   repoWithInstallationById,
+  type Submission,
+  type SubmissionInput,
+  settleClaim,
   stakeInUse,
+  submissionForPr,
   syncRepos,
   type User,
   type UserInput,
   upsertInstallation,
+  upsertSubmission,
   upsertUser,
   userByLogin,
   withdrawClaim,
@@ -64,6 +74,18 @@ export interface Store {
   claimBounty(input: ClaimInput): Promise<Claim>;
   withdrawClaim(bountyId: string, githubLogin: string): Promise<boolean>;
 
+  upsertSubmission(input: SubmissionInput): Promise<Submission>;
+  submissionForPr(bountyId: string, prNumber: number): Promise<Submission | undefined>;
+  mergedSubmissionFor(bountyId: string): Promise<Submission | undefined>;
+  openSubmissionsFor(bountyId: string): Promise<Submission[]>;
+  markSubmissionMerged(id: string, input: MergeInput): Promise<void>;
+  markSubmissionClosed(id: string): Promise<void>;
+  settleClaim(
+    claimId: string,
+    status: "won" | "lost",
+    stakeStatus: "refunded" | "forwarded_to_maintainer" | "none",
+  ): Promise<void>;
+
   x402PaymentById(id: string): Promise<X402Payment | undefined>;
   stakeInUse(paymentId: string): Promise<boolean>;
 }
@@ -94,6 +116,14 @@ export function databaseStore(db: Database): Store {
     activeClaimBy: (bountyId, login) => activeClaimBy(db, bountyId, login),
     claimBounty: (input) => claimBounty(db, input),
     withdrawClaim: (bountyId, login) => withdrawClaim(db, bountyId, login),
+
+    upsertSubmission: (input) => upsertSubmission(db, input),
+    submissionForPr: (bountyId, prNumber) => submissionForPr(db, bountyId, prNumber),
+    mergedSubmissionFor: (bountyId) => mergedSubmissionFor(db, bountyId),
+    openSubmissionsFor: (bountyId) => openSubmissionsFor(db, bountyId),
+    markSubmissionMerged: (id, input) => markSubmissionMerged(db, id, input),
+    markSubmissionClosed: (id) => markSubmissionClosed(db, id),
+    settleClaim: (claimId, status, stakeStatus) => settleClaim(db, claimId, status, stakeStatus),
 
     x402PaymentById: (id) => x402PaymentById(db, id),
     stakeInUse: (paymentId) => stakeInUse(db, paymentId),

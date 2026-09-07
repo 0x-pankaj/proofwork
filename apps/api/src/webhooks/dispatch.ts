@@ -4,6 +4,7 @@ import {
   issueCommentEventSchema,
   issuesEventSchema,
   parseEvent,
+  pullRequestEventSchema,
 } from "@proofwork/github";
 import type { Env } from "../env";
 import { db, github } from "../services";
@@ -12,6 +13,7 @@ import type { GitHubEventHandler } from "./github";
 import { handleInstallation, handleInstallationRepositories } from "./handlers/installation";
 import { handleIssueComment } from "./handlers/issue-comment";
 import { handleIssues } from "./handlers/issues";
+import { handlePullRequest } from "./handlers/pull-request";
 
 /**
  * Routes a verified delivery to the handler for its event.
@@ -40,6 +42,11 @@ export function githubDispatcher(env: Env): GitHubEventHandler {
         return handleIssues(
           { store, github: github(env), env },
           parseEvent(event, issuesEventSchema, payload),
+        );
+      case "pull_request":
+        return handlePullRequest(
+          { store, github: github(env), env },
+          parseEvent(event, pullRequestEventSchema, payload),
         );
       default:
         return;

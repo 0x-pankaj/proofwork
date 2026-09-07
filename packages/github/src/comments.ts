@@ -18,6 +18,8 @@ export type CommentKind =
   | "unclaimed"
   | "ai-not-allowed"
   | "linked"
+  | "claim-first"
+  | "disclosure-missing"
   | "settled"
   | "failed"
   | "expired"
@@ -196,6 +198,37 @@ export function pullRequestLinkedComment(input: LinkedInput): RenderedComment {
     `- Contributor: **${formatUsdc(input.contributorUsdc)}**${reward}`,
     "",
     `Settlement takes a few seconds and needs no further action. [Bounty details](${input.bountyUrl})`,
+  ]);
+}
+
+/**
+ * A pull request that fixes a funded issue, opened by someone who never claimed it.
+ * Without a claim there is no payout address, so this is the one thing standing between
+ * them and the money.
+ */
+export function claimFirstComment(
+  bountyId: string,
+  login: string,
+  issueNumber: number,
+  amountUsdc: bigint,
+): RenderedComment {
+  return render(bountyId, "claim-first", [
+    `@${login} — #${issueNumber} carries a ${formatUsdc(amountUsdc)} bounty, but you have not claimed it.`,
+    "",
+    `Comment \`/claim\` on [#${issueNumber}](../issues/${issueNumber}) before this is merged, so there is an address to pay.`,
+  ]);
+}
+
+/** The repository allows AI-assisted work only when the pull request says so. */
+export function disclosureMissingComment(
+  bountyId: string,
+  login: string,
+  settingsUrl: string,
+): RenderedComment {
+  return render(bountyId, "disclosure-missing", [
+    "This pull request was merged, but the payout is on hold.",
+    "",
+    `@${login} is a registered agent and this repository requires AI-assisted work to say so: the pull request body needs an \`AI-assisted:\` line. A maintainer can release the payout from [repository settings](${settingsUrl}).`,
   ]);
 }
 

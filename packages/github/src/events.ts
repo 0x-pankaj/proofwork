@@ -13,6 +13,8 @@ export const repositorySchema = z.object({
   id: z.number(),
   full_name: z.string(),
   private: z.boolean().optional().default(false),
+  /** Only a merge into this branch settles a bounty. */
+  default_branch: z.string().optional(),
 });
 
 export const senderSchema = z.object({
@@ -83,11 +85,32 @@ export const issueCommentEventSchema = z.object({
   sender: senderSchema,
 });
 
+export const pullRequestEventSchema = z.object({
+  action: z.string(),
+  pull_request: z.object({
+    number: z.number(),
+    title: z.string(),
+    html_url: z.string(),
+    body: z.string().nullable().optional(),
+    user: commentAuthorSchema.nullable().optional(),
+    head: z.object({ sha: z.string() }),
+    base: z.object({ ref: z.string() }),
+    draft: z.boolean().optional(),
+    merged: z.boolean().optional(),
+    merged_at: z.string().nullable().optional(),
+    merge_commit_sha: z.string().nullable().optional(),
+  }),
+  repository: repositorySchema,
+  installation: installationRefSchema.optional(),
+  sender: senderSchema,
+});
+
 export type RepositoryPayload = z.infer<typeof repositorySchema>;
 export type InstallationEvent = z.infer<typeof installationEventSchema>;
 export type InstallationRepositoriesEvent = z.infer<typeof installationRepositoriesEventSchema>;
 export type IssuesEvent = z.infer<typeof issuesEventSchema>;
 export type IssueCommentEvent = z.infer<typeof issueCommentEventSchema>;
+export type PullRequestEvent = z.infer<typeof pullRequestEventSchema>;
 
 /** Parses a delivery, naming the event in the error so a bad payload is diagnosable. */
 export function parseEvent<T>(event: string, schema: z.ZodType<T>, payload: unknown): T {
