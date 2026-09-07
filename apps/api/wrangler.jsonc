@@ -12,10 +12,14 @@
   "vars": {
     "ARC_NETWORK": "testnet",
     "PUBLIC_WEB_URL": "https://proofwork-web.0xpankaj.workers.dev",
+    // Published on chain as an agent's ERC-8004 metadata URI, so it has to be this
+    // service's real origin rather than a guess.
+    "PUBLIC_API_URL": "https://proofwork-api.0xpankaj.workers.dev",
     // Compliance Engine is entitlement-gated; until it is granted, Circle screens the
     // transfer itself and denies it there.
     "COMPLIANCE_MODE": "wallet-only",
-    // Flipped on once the x402 stake endpoint exists (phase 5).
+    // The x402 stake endpoint exists; left off on testnet so a demo agent can claim
+    // without a funded Gateway balance. Turned on for mainnet.
     "REQUIRE_AGENT_STAKE": "false"
   }
   // Secrets are set with `wrangler secret put`, never committed:
