@@ -28,6 +28,7 @@ export interface FakeStore extends Store {
   settlements: Map<string, Settlement>;
   reputation: ReputationInput[];
   payments: Map<string, X402Payment>;
+  cursors: Map<number, bigint>;
   synced: Array<{ installationId: string; repositories: RepositoryInput[] }>;
   uninstalledRepoIds: bigint[];
   uninstalledInstallations: string[];
@@ -203,6 +204,7 @@ export function createFakeStore(seed: FakeStoreSeed | RepoWithInstallation[] = {
     settlements: new Map((seeded.settlements ?? []).map((row) => [row.bountyId, row])),
     reputation: [],
     payments: new Map((seeded.payments ?? []).map((payment) => [payment.id, payment])),
+    cursors: new Map(),
     synced: [],
     uninstalledRepoIds: [],
     uninstalledInstallations: [],
@@ -281,6 +283,64 @@ export function createFakeStore(seed: FakeStoreSeed | RepoWithInstallation[] = {
 
     async bountyById(id) {
       return store.bounties.get(id);
+    },
+
+    async bountyByJobId(jobId) {
+      return [...store.bounties.values()].find((bounty) => bounty.jobId === jobId);
+    },
+
+    async forceBountyStatus(id, to, extra) {
+      const bounty = store.bounties.get(id);
+      if (!bounty) return false;
+      if (["settled", "rejected", "expired", "cancelled"].includes(bounty.status)) return false;
+      store.bounties.set(id, { ...bounty, status: to, ...extra });
+      return true;
+    },
+
+    async expireBounties(now) {
+      const expirable = ["pending_accept", "open", "claimed", "submitted"];
+      const expired = [];
+      for (const bounty of store.bounties.values()) {
+        if (!expirable.includes(bounty.status) || bounty.expiresAt >= now) continue;
+        const updated = { ...bounty, status: "expired" as const };
+        store.bounties.set(bounty.id, updated);
+        expired.push(updated);
+      }
+      return expired;
+    },
+
+    async activeClaimsWithPolicy() {
+      const stale = [];
+      for (const claim of store.claims) {
+        if (claim.status !== "active") continue;
+        const bounty = store.bounties.get(claim.bountyId);
+        if (!bounty || !["open", "claimed"].includes(bounty.status)) continue;
+        const found = await store.repoById(bounty.repoId);
+        if (found) stale.push({ claim, bounty, repo: found.repo });
+      }
+      return stale;
+    },
+
+    async expireClaims(ids) {
+      let expired = 0;
+      store.claims = store.claims.map((claim) => {
+        if (!ids.includes(claim.id) || claim.status !== "active") return claim;
+        expired += 1;
+        return {
+          ...claim,
+          status: "expired" as const,
+          stakeStatus: "forwarded_to_maintainer" as const,
+        };
+      });
+      return expired;
+    },
+
+    async readChainCursor(chainId) {
+      return store.cursors.get(chainId);
+    },
+
+    async writeChainCursor(chainId, lastBlock) {
+      store.cursors.set(chainId, lastBlock);
     },
 
     async bountyWithRepo(id) {

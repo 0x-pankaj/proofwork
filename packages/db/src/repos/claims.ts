@@ -1,6 +1,6 @@
-import { and, eq, ne } from "drizzle-orm";
+import { and, eq, inArray, ne } from "drizzle-orm";
 import type { Database } from "../client";
-import { type Claim, claims } from "../schema";
+import { type Bounty, bounties, type Claim, claims, type Repo, repos } from "../schema";
 
 export interface ClaimInput {
   bountyId: string;
@@ -112,4 +112,35 @@ export async function loseOtherClaims(
     .where(
       and(eq(claims.bountyId, bountyId), eq(claims.status, "active"), ne(claims.id, winnerClaimId)),
     );
+}
+
+export interface StaleClaim {
+  claim: Claim;
+  bounty: Bounty;
+  repo: Repo;
+}
+
+/**
+ * Live claims on live bounties, with the repository policy that says how long a claim may
+ * be held. Which of them have actually gone stale is decided by the caller, because the
+ * time-to-live lives inside a JSON policy column.
+ */
+export async function activeClaimsWithPolicy(db: Database): Promise<StaleClaim[]> {
+  return db
+    .select({ claim: claims, bounty: bounties, repo: repos })
+    .from(claims)
+    .innerJoin(bounties, eq(claims.bountyId, bounties.id))
+    .innerJoin(repos, eq(bounties.repoId, repos.id))
+    .where(and(eq(claims.status, "active"), inArray(bounties.status, ["open", "claimed"])));
+}
+
+/** Releases claims that were held without a pull request; their stakes pay the maintainer. */
+export async function expireClaims(db: Database, ids: string[]): Promise<number> {
+  if (ids.length === 0) return 0;
+  const updated = await db
+    .update(claims)
+    .set({ status: "expired", stakeStatus: "forwarded_to_maintainer" })
+    .where(and(inArray(claims.id, ids), eq(claims.status, "active")))
+    .returning({ id: claims.id });
+  return updated.length;
 }

@@ -4,11 +4,13 @@ import {
   activeBountyForIssue,
   activeClaimBy,
   activeClaimsFor,
+  activeClaimsWithPolicy,
   agentByGithubLogin,
   type Bounty,
   type BountyFilter,
   type BountyListing,
   bountyById,
+  bountyByJobId,
   bountyWithRepo,
   type Claim,
   type ClaimInput,
@@ -18,6 +20,9 @@ import {
   confirmBountyFunded,
   createBounty,
   type Database,
+  expireBounties,
+  expireClaims,
+  forceBountyStatus,
   type Installation,
   type InstallationInput,
   installationByGithubId,
@@ -40,11 +45,13 @@ import {
   type RepositoryInput,
   type RepoWithInstallation,
   type ReputationInput,
+  readChainCursor,
   recordReputationEvent,
   repoWithInstallationByGithubId,
   repoWithInstallationById,
   type Settlement,
   type SettlementInput,
+  type StaleClaim,
   type Submission,
   type SubmissionInput,
   settleClaim,
@@ -60,6 +67,7 @@ import {
   userById,
   userByLogin,
   withdrawClaim,
+  writeChainCursor,
   type X402Payment,
   x402PaymentById,
 } from "@proofwork/db";
@@ -88,6 +96,13 @@ export interface Store {
 
   activeBountyForIssue(repoId: string, issueNumber: number): Promise<Bounty | undefined>;
   bountyById(id: string): Promise<Bounty | undefined>;
+  bountyByJobId(jobId: bigint): Promise<Bounty | undefined>;
+  forceBountyStatus(
+    id: string,
+    to: Bounty["status"],
+    extra?: { settleTxHash?: string; jobId?: bigint },
+  ): Promise<boolean>;
+  expireBounties(now: Date): Promise<Bounty[]>;
   bountyWithRepo(id: string): Promise<BountyListing | undefined>;
   listBounties(filter: BountyFilter): Promise<BountyListing[]>;
   createBounty(input: NewBountyInput): Promise<Bounty>;
@@ -132,6 +147,12 @@ export interface Store {
   ): Promise<void>;
   recordReputationEvent(input: ReputationInput): Promise<void>;
 
+  activeClaimsWithPolicy(): Promise<StaleClaim[]>;
+  expireClaims(ids: string[]): Promise<number>;
+
+  readChainCursor(chainId: number): Promise<bigint | undefined>;
+  writeChainCursor(chainId: number, lastBlock: bigint): Promise<void>;
+
   x402PaymentById(id: string): Promise<X402Payment | undefined>;
   stakeInUse(paymentId: string): Promise<boolean>;
 }
@@ -156,6 +177,9 @@ export function databaseStore(db: Database): Store {
 
     activeBountyForIssue: (repoId, issueNumber) => activeBountyForIssue(db, repoId, issueNumber),
     bountyById: (id) => bountyById(db, id),
+    bountyByJobId: (jobId) => bountyByJobId(db, jobId),
+    forceBountyStatus: (id, to, extra) => forceBountyStatus(db, id, to, extra),
+    expireBounties: (now) => expireBounties(db, now),
     bountyWithRepo: (id) => bountyWithRepo(db, id),
     listBounties: (filter) => listBounties(db, filter),
     createBounty: (input) => createBounty(db, input),
@@ -187,6 +211,12 @@ export function databaseStore(db: Database): Store {
     markSettlementComplete: (bountyId, input) => markSettlementComplete(db, bountyId, input),
     markSettlementFailed: (bountyId, input) => markSettlementFailed(db, bountyId, input),
     recordReputationEvent: (input) => recordReputationEvent(db, input),
+
+    activeClaimsWithPolicy: () => activeClaimsWithPolicy(db),
+    expireClaims: (ids) => expireClaims(db, ids),
+
+    readChainCursor: (chainId) => readChainCursor(db, chainId),
+    writeChainCursor: (chainId, lastBlock) => writeChainCursor(db, chainId, lastBlock),
 
     x402PaymentById: (id) => x402PaymentById(db, id),
     stakeInUse: (paymentId) => stakeInUse(db, paymentId),

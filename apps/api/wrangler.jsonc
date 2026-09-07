@@ -6,6 +6,9 @@
   // Needed by the Neon driver and the crypto used to verify webhook signatures.
   "compatibility_flags": ["nodejs_compat"],
   "observability": { "enabled": true },
+  // Every minute: reconcile the database against the escrow contract's events.
+  // Hourly: expire bounties past their deadline and claims held without a pull request.
+  "triggers": { "crons": ["*/1 * * * *", "0 * * * *"] },
   "vars": {
     "ARC_NETWORK": "testnet",
     "PUBLIC_WEB_URL": "http://localhost:3000"

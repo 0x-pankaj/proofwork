@@ -10,6 +10,7 @@ import {
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
+import { reconcileChain, sweepExpiries } from "./cron";
 import { type Env, required } from "./env";
 import { fail } from "./http";
 import { type BountyVariables, bountyRoutes } from "./routes/bounties";
@@ -88,4 +89,34 @@ app.onError((error, c) => {
   return fail(c, 500, "internal_error", "the request could not be completed");
 });
 
-export default app;
+export { app };
+
+/** The hourly sweep; anything else on the schedule is the chain reconciler. */
+export const HOURLY_SWEEP = "0 * * * *";
+
+export default {
+  fetch: app.fetch,
+
+  /**
+   * Scheduled work. Both jobs are safe to run twice and safe to miss: they only ever
+   * bring the database in line with the chain and the clock.
+   */
+  async scheduled(controller, env, ctx) {
+    setChainEnv(env);
+    const store = databaseStore(db(env));
+
+    ctx.waitUntil(
+      (async () => {
+        try {
+          const result =
+            controller.cron === HOURLY_SWEEP
+              ? await sweepExpiries({ store, env })
+              : await reconcileChain({ store, env });
+          console.log("cron", { cron: controller.cron, ...result });
+        } catch (error) {
+          console.error("cron failed", { cron: controller.cron, message: String(error) });
+        }
+      })(),
+    );
+  },
+} satisfies ExportedHandler<Env>;

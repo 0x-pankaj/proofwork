@@ -1,6 +1,7 @@
 export * from "./agents";
 export * from "./bounties";
 export * from "./claims";
+export * from "./cursors";
 export * from "./installations";
 export * from "./payments";
 export * from "./repositories";

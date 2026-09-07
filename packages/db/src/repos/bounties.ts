@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, inArray, notInArray } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, lt, notInArray } from "drizzle-orm";
 import type { Database } from "../client";
 import { type Bounty, bounties, type Repo, repos } from "../schema";
 
@@ -178,4 +178,45 @@ export async function bountyWithRepo(db: Database, id: string): Promise<BountyLi
     .where(eq(bounties.id, id))
     .limit(1);
   return row;
+}
+
+export async function bountyByJobId(db: Database, jobId: bigint): Promise<Bounty | undefined> {
+  const [row] = await db.select().from(bounties).where(eq(bounties.jobId, jobId)).limit(1);
+  return row;
+}
+
+/**
+ * Applies what the chain says, regardless of what we thought was happening.
+ *
+ * Only the reconciler uses this. Everywhere else goes through `moveBountyStatus`, which
+ * enforces the state machine; here the escrow contract has already acted and the database
+ * is the thing that is out of date. Terminal states are still left alone.
+ */
+export async function forceBountyStatus(
+  db: Database,
+  id: string,
+  to: Bounty["status"],
+  extra: Partial<Pick<Bounty, "settleTxHash" | "jobId">> = {},
+): Promise<boolean> {
+  const updated = await db
+    .update(bounties)
+    .set({ status: to, updatedAt: new Date(), ...extra })
+    .where(and(eq(bounties.id, id), notInArray(bounties.status, TERMINAL)))
+    .returning({ id: bounties.id });
+  return updated.length > 0;
+}
+
+/** Statuses that still hold escrow and can therefore run out of time. */
+const EXPIRABLE: Bounty["status"][] = ["pending_accept", "open", "claimed", "submitted"];
+
+/**
+ * Marks bounties whose deadline has passed. The on-chain refund is permissionless and is
+ * claimed separately by the funder; this only stops us treating them as live.
+ */
+export async function expireBounties(db: Database, now: Date): Promise<Bounty[]> {
+  return db
+    .update(bounties)
+    .set({ status: "expired", updatedAt: now })
+    .where(and(lt(bounties.expiresAt, now), inArray(bounties.status, EXPIRABLE)))
+    .returning();
 }
