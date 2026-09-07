@@ -44,6 +44,8 @@ describe("unknown routes", () => {
   it("returns a json 404 rather than an html page", async () => {
     const res = await app.request("/nope", {}, env);
     expect(res.status).toBe(404);
-    await expect(res.json()).resolves.toEqual({ error: "not found" });
+    await expect(res.json()).resolves.toEqual({
+      error: { code: "not_found", message: "no route for GET /nope" },
+    });
   });
 });

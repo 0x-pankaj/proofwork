@@ -11,6 +11,7 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 import type { Env } from "./env";
+import { fail } from "./http";
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -54,11 +55,11 @@ app.get("/v1/config", (c) => {
   });
 });
 
-app.notFound((c) => c.json({ error: "not found" }, 404));
+app.notFound((c) => fail(c, 404, "not_found", `no route for ${c.req.method} ${c.req.path}`));
 
 app.onError((error, c) => {
   console.error("unhandled", { path: c.req.path, message: String(error) });
-  return c.json({ error: "internal error" }, 500);
+  return fail(c, 500, "internal_error", "the request could not be completed");
 });
 
 export default app;
