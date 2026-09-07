@@ -14,6 +14,7 @@ import { reconcileChain, sweepExpiries } from "./cron";
 import { type Env, required } from "./env";
 import { fail } from "./http";
 import { type BountyVariables, bountyRoutes } from "./routes/bounties";
+import { repoRoutes } from "./routes/repos";
 import { userRoutes } from "./routes/users";
 import { db } from "./services";
 import { databaseStore, type Store } from "./store";
@@ -69,6 +70,7 @@ app.get("/v1/config", (c) => {
 });
 
 app.route("/v1/bounties", bountyRoutes);
+app.route("/v1/repos", repoRoutes);
 app.route("/v1/users", userRoutes);
 
 /**

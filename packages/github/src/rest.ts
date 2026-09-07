@@ -169,6 +169,16 @@ export class GitHubClient {
     return toIssue(data);
   }
 
+  /** Open issues, pull requests excluded: a pull request cannot carry a bounty. */
+  async listOpenIssues(repo: RepoRef): Promise<Issue[]> {
+    const data = await this.request<Array<IssuePayload & { pull_request?: unknown }>>(
+      repo,
+      "GET",
+      `/repos/${repo.fullName}/issues?state=open&per_page=100`,
+    );
+    return data.filter((issue) => !issue.pull_request).map(toIssue);
+  }
+
   async getPullRequest(repo: RepoRef, prNumber: number): Promise<PullRequest> {
     const data = await this.request<PullRequestPayload>(
       repo,
