@@ -34,8 +34,10 @@ function commentWriter() {
   return { github, posted };
 }
 
+type ExecutionInput = Parameters<CircleClient["createContractExecutionTransaction"]>[0];
+
 function circleClient(finalState = "CONFIRMED") {
-  const create = vi.fn(async () => ({ data: { id: "circle-tx-1" } }));
+  const create = vi.fn(async (_input: ExecutionInput) => ({ data: { id: "circle-tx-1" } }));
   const client: CircleClient = {
     createContractExecutionTransaction: create,
     async getTransaction() {
@@ -95,8 +97,9 @@ describe("settleBountyById", () => {
       }),
     );
 
-    const [jobId, provider, deliverable, reason] = context.create.mock.calls[0]?.[0]
-      .abiParameters as string[];
+    const call = context.create.mock.calls[0];
+    if (!call) throw new Error("the settlement transaction was never submitted");
+    const [jobId, provider, deliverable, reason] = call[0].abiParameters as string[];
     expect(jobId).toBe("1");
     expect(provider).toBe("0x52679a68dc5c1c31f1ac22b89431a2b06524c4aa");
     expect(deliverable).toMatch(/^0x[0-9a-f]{64}$/);

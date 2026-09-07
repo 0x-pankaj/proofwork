@@ -144,7 +144,7 @@ async function abandoned(
 
   const { bounty } = linked;
   const submission = await deps.store.submissionForPr(bounty.id, event.pull_request.number);
-  if (!submission || submission.status !== "open") return;
+  if (submission?.status !== "open") return;
 
   await deps.store.markSubmissionClosed(submission.id);
   await deps.store.settleClaim(submission.claimId, "lost", "forwarded_to_maintainer");
