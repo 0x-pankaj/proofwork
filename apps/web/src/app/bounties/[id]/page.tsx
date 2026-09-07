@@ -203,7 +203,7 @@ function stepsFor(bounty: BountyDetail): TimelineStep[] {
           {bounty.repo}#{bounty.submission.prNumber}
         </a>
       ) : (
-        "The pull request must say “Fixes #" + bounty.issueNumber + "”."
+        `The pull request must say “Fixes #${bounty.issueNumber}”.`
       ),
       state: state(submitted, claimed && !submitted),
     },
