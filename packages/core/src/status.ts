@@ -87,7 +87,14 @@ export function holdsEscrow(status: BountyStatus): boolean {
   );
 }
 
-/** Whether a contributor may claim it right now. */
+/**
+ * Whether a contributor may claim it right now.
+ *
+ * A bounty someone else already holds is still claimable: concurrent claims are allowed
+ * and the first merged pull request is the one that gets paid. Locking an issue to one
+ * claimant is how bounty boards end up with issues held hostage by people who never
+ * ship.
+ */
 export function isClaimable(status: BountyStatus): boolean {
-  return status === "open";
+  return status === "open" || status === "claimed";
 }

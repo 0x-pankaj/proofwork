@@ -108,8 +108,8 @@ describe("status predicates", () => {
     ]);
   });
 
-  it("allows claiming only while open", () => {
-    expect(BOUNTY_STATUSES.filter(isClaimable)).toEqual(["open"]);
+  it("allows claiming while open and while someone else holds it", () => {
+    expect(BOUNTY_STATUSES.filter(isClaimable)).toEqual(["open", "claimed"]);
   });
 
   it("agrees that a terminal bounty holds no escrow", () => {
