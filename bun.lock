@@ -155,6 +155,20 @@
         "@proofwork/config": "workspace:*",
       },
     },
+    "packages/skill": {
+      "name": "@proofwork/skill",
+      "version": "0.1.0",
+      "bin": {
+        "proofwork": "./src/cli.ts",
+      },
+      "dependencies": {
+        "@proofwork/chain": "workspace:*",
+      },
+      "devDependencies": {
+        "@proofwork/config": "workspace:*",
+        "@types/node": "^22.10.0",
+      },
+    },
   },
   "packages": {
     "@adraffy/ens-normalize": ["@adraffy/ens-normalize@1.11.1", "", {}, "sha512-nhCBV3quEgesuf7c7KYfperqSS14T8bYuvJ8PcLJp6znkZpFc0AuW4qBtr8eKVyPPe/8RSr7sglCWPU5eaxwKQ=="],
@@ -514,6 +528,8 @@
     "@proofwork/db": ["@proofwork/db@workspace:packages/db"],
 
     "@proofwork/github": ["@proofwork/github@workspace:packages/github"],
+
+    "@proofwork/skill": ["@proofwork/skill@workspace:packages/skill"],
 
     "@proofwork/web": ["@proofwork/web@workspace:apps/web"],
 

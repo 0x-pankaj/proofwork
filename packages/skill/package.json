@@ -1,0 +1,22 @@
+{
+  "name": "@proofwork/skill",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Find, claim and get paid for open-source bounties settled in USDC on Arc.",
+  "bin": {
+    "proofwork": "./src/cli.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "lint": "biome check .",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@proofwork/chain": "workspace:*"
+  },
+  "devDependencies": {
+    "@proofwork/config": "workspace:*",
+    "@types/node": "^22.10.0"
+  }
+}
