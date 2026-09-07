@@ -7,7 +7,6 @@ import { z } from "zod";
 import { internalOnly } from "../auth";
 import type { Env } from "../env";
 import { fail } from "../http";
-import { github } from "../services";
 import { bountyUrl } from "../urls";
 import { repoRef } from "../webhooks/repo-ref";
 import type { BountyVariables } from "./bounties";
@@ -61,7 +60,7 @@ repoRoutes.get("/:id/issues", internalOnly, async (c) => {
   const found = await c.get("store")().repoById(c.req.param("id"));
   if (!found?.repo.installed) return fail(c, 404, "not_found", "no such repository");
 
-  const issues = await github(c.env).listOpenIssues(repoRef(found));
+  const issues = await c.get("github")().listOpenIssues(repoRef(found));
   return c.json({
     issues: issues.map((issue) => ({
       number: issue.number,
@@ -83,7 +82,7 @@ repoRoutes.put("/:id/policy", internalOnly, zValidator("json", policySchema), as
   const user = await store.userById(c.get("actingUserId"));
   if (!user) return fail(c, 404, "not_found", "no such user");
 
-  const permission = await github(c.env).permissionFor(repoRef(found), user.login);
+  const permission = await c.get("github")().permissionFor(repoRef(found), user.login);
   if (!canMaintain(permission)) {
     return fail(c, 403, "not_a_maintainer", "only someone who can merge may set the policy");
   }
@@ -122,7 +121,7 @@ repoRoutes.post("/:id/bounties/:bountyId/accept", internalOnly, async (c) => {
   const user = await store.userById(c.get("actingUserId"));
   if (!user) return fail(c, 404, "not_found", "no such user");
 
-  const permission = await github(c.env).permissionFor(repoRef(found), user.login);
+  const permission = await c.get("github")().permissionFor(repoRef(found), user.login);
   if (!canMaintain(permission)) {
     return fail(c, 403, "not_a_maintainer", "only someone who can merge may accept a bounty");
   }
@@ -144,12 +143,9 @@ repoRoutes.post("/:id/bounties/:bountyId/accept", internalOnly, async (c) => {
     fundingTxUrl: bounty.createTxHash ? txUrl(bounty.createTxHash, c.env) : null,
     expiresAt: bounty.expiresAt,
   });
-  await github(c.env).upsertIssueComment(
-    repoRef(found),
-    bounty.issueNumber,
-    comment.marker,
-    comment.body,
-  );
+  await c
+    .get("github")()
+    .upsertIssueComment(repoRef(found), bounty.issueNumber, comment.marker, comment.body);
 
   return c.json({ status: "open", accepted: true });
 });

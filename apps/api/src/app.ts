@@ -15,7 +15,7 @@ import { fail } from "./http";
 import { type BountyVariables, bountyRoutes } from "./routes/bounties";
 import { repoRoutes } from "./routes/repos";
 import { userRoutes } from "./routes/users";
-import { db } from "./services";
+import { db, github } from "./services";
 import { databaseStore, type Store } from "./store";
 import { githubDispatcher } from "./webhooks/dispatch";
 import { receiveGitHubWebhook } from "./webhooks/github";
@@ -37,6 +37,7 @@ app.use("*", async (c, next) => {
     store ??= databaseStore(db(c.env));
     return store;
   });
+  c.set("github", () => github(c.env));
   await next();
 });
 

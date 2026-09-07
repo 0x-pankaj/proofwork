@@ -1,14 +1,14 @@
 import { zValidator } from "@hono/zod-validator";
 import { activeNetwork, bpsOf, proofworkJobsAddress, txUrl } from "@proofwork/chain";
 import type { Bounty } from "@proofwork/db";
-import { fundedComment, pendingAcceptComment } from "@proofwork/github";
+import { fundedComment, type GitHubClient, pendingAcceptComment } from "@proofwork/github";
 import { Hono } from "hono";
 import { z } from "zod";
 import { type InternalVariables, internalOnly } from "../auth";
 import { type Env, required } from "../env";
 import { confirmFunding, fundingCalls, readFeeBps } from "../funding";
 import { fail } from "../http";
-import { circleCompliance, circleWallets, github } from "../services";
+import { circleCompliance, circleWallets } from "../services";
 import { settleBountyById, splitOf } from "../settlement";
 import type { Store } from "../store";
 import { bountyUrl, repoSettingsUrl } from "../urls";
@@ -52,6 +52,8 @@ export interface BountyVariables extends InternalVariables {
    * signature — does not need `DATABASE_URL`, and so tests can supply their own.
    */
   store: () => Store;
+  /** Same reasoning for GitHub: no app credentials needed until a route calls it. */
+  github: () => GitHubClient;
 }
 
 export const bountyRoutes = new Hono<{ Bindings: Env; Variables: BountyVariables }>();
@@ -150,7 +152,7 @@ bountyRoutes.post("/", internalOnly, zValidator("json", createSchema), async (c)
     return fail(c, 400, "invalid_expiry", "the deadline is in the past");
   }
 
-  const issue = await github(c.env).getIssue(repoRef(found), input.issueNumber);
+  const issue = await c.get("github")().getIssue(repoRef(found), input.issueNumber);
   const feeUsdc = bpsOf(amountUsdc, await readFeeBps(c.env));
 
   // A review reward needs somewhere to send it; without one the contributor takes it all.
@@ -251,12 +253,9 @@ bountyRoutes.post(
             settingsUrl: repoSettingsUrl(c.env, repo.id),
           });
 
-      await github(c.env).upsertIssueComment(
-        repoRef(found),
-        bounty.issueNumber,
-        comment.marker,
-        comment.body,
-      );
+      await c
+        .get("github")()
+        .upsertIssueComment(repoRef(found), bounty.issueNumber, comment.marker, comment.body);
     }
 
     return c.json({
@@ -273,7 +272,7 @@ bountyRoutes.post("/:id/retry-settlement", internalOnly, async (c) => {
   const outcome = await settleBountyById(
     {
       store,
-      github: github(c.env),
+      github: c.get("github")(),
       wallets: circleWallets(c.env),
       compliance: circleCompliance(c.env),
       env: c.env,
