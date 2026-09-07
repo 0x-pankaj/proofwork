@@ -22,6 +22,8 @@ export interface Env extends ChainEnv {
 
   /** "false" lets agents claim without a stake, which testnet demos need before x402. */
   REQUIRE_AGENT_STAKE?: string;
+  /** "engine" uses Compliance Engine; anything else relies on Circle's wallet screening. */
+  COMPLIANCE_MODE?: string;
 }
 
 /** Reads a required binding, failing with a message that names what is missing. */

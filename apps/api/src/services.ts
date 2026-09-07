@@ -1,3 +1,5 @@
+import { activeNetwork, circleBlockchainFor } from "@proofwork/chain";
+import { CircleCompliance, CircleWallets } from "@proofwork/circle";
 import { createDatabase, type Database } from "@proofwork/db";
 import { GitHubAppAuth, GitHubClient } from "@proofwork/github";
 import { type Env, required } from "./env";
@@ -13,6 +15,7 @@ import { type Env, required } from "./env";
 let cachedDatabase: { url: string; instance: Database } | undefined;
 let cachedAuth: { appId: string; instance: GitHubAppAuth } | undefined;
 let cachedClient: { appId: string; instance: GitHubClient } | undefined;
+let cachedWallets: { apiKey: string; instance: CircleWallets } | undefined;
 
 export function db(env: Env): Database {
   const url = required(env, "DATABASE_URL");
@@ -34,6 +37,33 @@ export function githubAuth(env: Env): GitHubAppAuth {
     };
   }
   return cachedAuth.instance;
+}
+
+/** The verifier wallet's client. Built once so its HTTP agent and keys are reused. */
+export function circleWallets(env: Env): CircleWallets {
+  const apiKey = required(env, "CIRCLE_API_KEY");
+  if (cachedWallets?.apiKey !== apiKey) {
+    cachedWallets = {
+      apiKey,
+      instance: new CircleWallets({
+        apiKey,
+        entitySecret: required(env, "CIRCLE_ENTITY_SECRET"),
+      }),
+    };
+  }
+  return cachedWallets.instance;
+}
+
+/**
+ * Compliance screening. Cheap to construct, and the mode is read per request so it can
+ * be switched with a Worker variable rather than a deploy.
+ */
+export function circleCompliance(env: Env): CircleCompliance {
+  return new CircleCompliance({
+    apiKey: required(env, "CIRCLE_API_KEY"),
+    chain: circleBlockchainFor(activeNetwork(env), env),
+    mode: env.COMPLIANCE_MODE === "engine" ? "engine" : "wallet-only",
+  });
 }
 
 export function github(env: Env): GitHubClient {

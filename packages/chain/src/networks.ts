@@ -101,6 +101,16 @@ export function explorerUrlFor(network: ArcNetwork, env: ChainEnv = chainEnv()):
     : (env.ARC_MAINNET_EXPLORER_URL ?? "https://arcscan.app");
 }
 
+/**
+ * The blockchain id Circle's APIs use. Mainnet's is `ARC`, published on launch day; it is
+ * env-driven so nothing has to be redeployed to point at it.
+ */
+export function circleBlockchainFor(network: ArcNetwork, env: ChainEnv = chainEnv()): string {
+  return network === "testnet"
+    ? CIRCLE_BLOCKCHAIN_TESTNET
+    : (env.CIRCLE_BLOCKCHAIN_MAINNET ?? "ARC");
+}
+
 /** Explorer link for a transaction hash, for comments, the UI and the demo. */
 export function txUrl(hash: string, env: ChainEnv = chainEnv()): string {
   return `${explorerUrlFor(activeNetwork(env), env)}/tx/${hash}`;

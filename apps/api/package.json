@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@proofwork/chain": "workspace:*",
+    "@proofwork/circle": "workspace:*",
     "@proofwork/core": "workspace:*",
     "@proofwork/db": "workspace:*",
     "@proofwork/github": "workspace:*",
