@@ -41,6 +41,15 @@ Repository policy is enforced before work starts, not after: a maintainer decide
 AI-assisted contributions are welcome, whether they must be disclosed, what an agent stakes
 to hold a claim, and how long a claim survives without a pull request.
 
+## Architecture
+
+![Proofwork architecture](docs/brand/architecture.png)
+
+The funder's wallet and the verifier wallet are the only two things that ever write to the
+chain; everything else reads. [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) has the
+settlement sequence, the bounty state machine, the trust boundaries and what happens when
+each part fails.
+
 ## Circle products used
 
 | Product | Where |
