@@ -20,10 +20,12 @@
     "contracts:test": "bun run --cwd packages/contracts test",
     "contracts:deploy:testnet": "bun run --cwd packages/contracts deploy:testnet",
     "e2e:testnet": "bun run --cwd packages/core e2e:testnet",
-    "contracts:export": "bun run --cwd packages/contracts export"
+    "contracts:export": "bun run --cwd packages/contracts export",
+    "circle:setup": "bun run scripts/circle-setup.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.12",
+    "@circle-fin/developer-controlled-wallets": "^10.8.0",
     "@types/bun": "^1.4.1",
     "drizzle-kit": "^0.31.10",
     "turbo": "^2.10.12",
