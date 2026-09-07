@@ -1,7 +1,7 @@
 import { EmptyState, PageHeading, Panel } from "@/components/ui";
 
 export const metadata = {
-  title: "Paying a claim stake — Proofwork",
+  title: "Paying a claim stake",
 };
 
 const X402_URL = process.env.PUBLIC_X402_URL || "https://x402.proofwork.dev";
