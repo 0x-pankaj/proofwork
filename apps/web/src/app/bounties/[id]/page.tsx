@@ -106,6 +106,11 @@ export default async function BountyPage({ params }: { params: Promise<{ id: str
                           agent
                         </span>
                       ) : null}
+                      {claim.status === "won" ? (
+                        <span className="ml-2 rounded bg-paid-soft px-1.5 py-0.5 text-xs text-paid">
+                          paid
+                        </span>
+                      ) : null}
                     </span>
                     <span className="font-mono text-xs text-ink-faint">
                       {shortAddress(claim.payoutAddress)}
@@ -166,6 +171,10 @@ function stepsFor(bounty: BountyDetail): TimelineStep[] {
   const submitted = bounty.submission !== null;
   const merged = Boolean(bounty.submission?.mergedAt);
   const paid = bounty.status === "settled";
+  // A settled bounty has no active claims left, so the timeline reads every claim and
+  // names the one that won: who was paid is the point of the page.
+  const working = bounty.claims.filter((claim) => claim.status !== "withdrawn");
+  const winner = bounty.claims.find((claim) => claim.status === "won");
 
   const state = (done: boolean, current: boolean): TimelineStep["state"] =>
     done ? "done" : current ? "current" : "waiting";
@@ -183,10 +192,10 @@ function stepsFor(bounty: BountyDetail): TimelineStep[] {
     },
     {
       label: claimed
-        ? `Claimed by ${bounty.claims.map((claim) => `@${claim.login}`).join(", ") || "a contributor"}`
+        ? `Claimed by ${working.map((claim) => `@${claim.login}`).join(", ") || "a contributor"}`
         : "Waiting for a claimant",
       detail: claimed ? undefined : "Anyone can comment /claim on the issue.",
-      at: bounty.claims[0] ? timeAgo(bounty.claims[0].claimedAt) : null,
+      at: working[0] ? timeAgo(working[0].claimedAt) : null,
       state: state(claimed, funded && !claimed),
     },
     {
@@ -216,7 +225,9 @@ function stepsFor(bounty: BountyDetail): TimelineStep[] {
       state: state(merged, submitted && !merged),
     },
     {
-      label: paid ? "Paid in one transaction" : "Payout",
+      label: paid
+        ? `Paid ${winner ? `@${winner.login}` : "the contributor"} in one transaction`
+        : "Payout",
       detail:
         bounty.settlement?.status === "failed" ? (
           <span className="text-danger">{bounty.settlement.error}</span>

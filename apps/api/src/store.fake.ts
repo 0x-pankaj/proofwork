@@ -475,6 +475,10 @@ export function createFakeStore(seed: FakeStoreSeed | RepoWithInstallation[] = {
       return true;
     },
 
+    async claimsFor(bountyId) {
+      return store.claims.filter((claim) => claim.bountyId === bountyId);
+    },
+
     async activeClaimsFor(bountyId) {
       return store.claims.filter(
         (claim) => claim.bountyId === bountyId && claim.status === "active",

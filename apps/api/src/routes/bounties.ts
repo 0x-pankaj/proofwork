@@ -87,7 +87,7 @@ bountyRoutes.get("/:id", async (c) => {
 
   const { bounty, repo } = listing;
   const [claims, merged, open, settlement] = await Promise.all([
-    store.activeClaimsFor(bounty.id),
+    store.claimsFor(bounty.id),
     store.mergedSubmissionFor(bounty.id),
     store.openSubmissionsFor(bounty.id),
     store.settlementForBounty(bounty.id),
@@ -102,6 +102,8 @@ bountyRoutes.get("/:id", async (c) => {
     claims: claims.map((claim) => ({
       login: claim.githubLogin,
       kind: claim.claimantKind,
+      /** `won` is the one that was paid; `active` is still working. */
+      status: claim.status,
       payoutAddress: claim.payoutAddress,
       claimedAt: claim.createdAt,
     })),

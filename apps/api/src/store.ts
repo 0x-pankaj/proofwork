@@ -18,6 +18,7 @@ import {
   type ClaimListing,
   claimBounty,
   claimById,
+  claimsFor,
   claimsForUser,
   completeBounty,
   confirmBountyFunded,
@@ -132,6 +133,7 @@ export interface Store {
   completeBounty(id: string, input: { txHash: string; circleTxId: string }): Promise<boolean>;
 
   activeClaimsFor(bountyId: string): Promise<Claim[]>;
+  claimsFor(bountyId: string): Promise<Claim[]>;
   activeClaimBy(bountyId: string, githubLogin: string): Promise<Claim | undefined>;
   claimById(id: string): Promise<Claim | undefined>;
   loseOtherClaims(bountyId: string, winnerClaimId: string): Promise<void>;
@@ -212,6 +214,7 @@ export function databaseStore(db: Database): Store {
     completeBounty: (id, input) => completeBounty(db, id, input),
 
     activeClaimsFor: (bountyId) => activeClaimsFor(db, bountyId),
+    claimsFor: (bountyId) => claimsFor(db, bountyId),
     activeClaimBy: (bountyId, login) => activeClaimBy(db, bountyId, login),
     claimById: (id) => claimById(db, id),
     loseOtherClaims: (bountyId, winnerClaimId) => loseOtherClaims(db, bountyId, winnerClaimId),

@@ -42,6 +42,7 @@ export interface BountySummary {
 export interface BountyClaim {
   login: string;
   kind: "user" | "agent";
+  status: "active" | "withdrawn" | "won" | "lost" | "expired";
   payoutAddress: string;
   claimedAt: string;
 }

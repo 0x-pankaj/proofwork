@@ -18,6 +18,11 @@ export async function claimById(db: Database, id: string): Promise<Claim | undef
   return row;
 }
 
+/** Every claim ever made on a bounty, so a settled one still shows who did the work. */
+export async function claimsFor(db: Database, bountyId: string): Promise<Claim[]> {
+  return db.select().from(claims).where(eq(claims.bountyId, bountyId)).orderBy(claims.createdAt);
+}
+
 export async function activeClaimsFor(db: Database, bountyId: string): Promise<Claim[]> {
   return db
     .select()
