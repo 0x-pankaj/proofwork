@@ -46,6 +46,9 @@ export async function settleBountyById(
 ): Promise<SettlementOutcome> {
   const { store, env } = deps;
   let loaded: Loaded | undefined;
+  // Timed from here rather than from the merge, so a retry after an outage does not
+  // report a settlement that took an hour when the payment itself took three seconds.
+  const startedAt = Date.now();
 
   const ports: SettlementPorts = {
     async load(): Promise<SettlementContext | undefined> {
@@ -166,7 +169,7 @@ export async function settleBountyById(
 
     async comment({ txHash, split }) {
       if (!loaded) return;
-      const { bounty, claim, submission, found } = loaded;
+      const { bounty, claim, found } = loaded;
       const maintainer = found.repo.maintainerUserId
         ? await store.userById(found.repo.maintainerUserId)
         : undefined;
@@ -177,7 +180,7 @@ export async function settleBountyById(
         maintainerUsdc: split.maintainer,
         maintainerLogin: maintainer?.login ?? null,
         txUrl: txUrl(txHash, env),
-        seconds: secondsSince(submission.mergedAt),
+        seconds: (Date.now() - startedAt) / 1000,
       });
 
       await deps.github.upsertIssueComment(
@@ -208,8 +211,3 @@ export function splitOf(bounty: Pick<Bounty, "amountUsdc" | "feeUsdc" | "maintai
 }
 
 export { MERGED_REPUTATION_SCORE };
-
-function secondsSince(from: Date | null): number {
-  if (!from) return 0;
-  return Math.max(0, (Date.now() - from.getTime()) / 1000);
-}
