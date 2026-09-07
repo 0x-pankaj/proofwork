@@ -1,6 +1,10 @@
 {
   "$schema": "https://biomejs.dev/schemas/2.5.12/schema.json",
-  "vcs": { "enabled": true, "clientKind": "git", "useIgnoreFile": true },
+  "vcs": {
+    "enabled": true,
+    "clientKind": "git",
+    "useIgnoreFile": true
+  },
   "files": {
     "includes": [
       "**",
@@ -13,7 +17,10 @@
       "!**/cache/**",
       "!**/broadcast/**",
       "!**/lib/**",
-      "!**/*.gen.ts"
+      "!**/*.gen.ts",
+      "!**/drizzle/**",
+      "!**/deployments/**",
+      "!**/.gas-snapshot"
     ]
   },
   "formatter": {
@@ -26,13 +33,28 @@
     "enabled": true,
     "rules": {
       "recommended": true,
-      "suspicious": { "noExplicitAny": "error" },
-      "style": { "useConst": "error", "noNonNullAssertion": "warn" },
-      "correctness": { "noUnusedImports": "error" }
+      "suspicious": {
+        "noExplicitAny": "error"
+      },
+      "style": {
+        "useConst": "error",
+        "noNonNullAssertion": "warn"
+      },
+      "correctness": {
+        "noUnusedImports": "error"
+      }
     }
   },
   "javascript": {
-    "formatter": { "quoteStyle": "double", "semicolons": "always", "trailingCommas": "all" }
+    "formatter": {
+      "quoteStyle": "double",
+      "semicolons": "always",
+      "trailingCommas": "all"
+    }
   },
-  "json": { "formatter": { "enabled": true } }
+  "json": {
+    "formatter": {
+      "enabled": true
+    }
+  }
 }
