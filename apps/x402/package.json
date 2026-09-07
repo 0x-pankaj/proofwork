@@ -1,0 +1,30 @@
+{
+  "name": "@proofwork/x402",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun --watch src/index.ts",
+    "start": "node --experimental-strip-types src/index.ts",
+    "typecheck": "tsc --noEmit",
+    "lint": "biome check .",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.72.0",
+    "@circle-fin/x402-batching": "^3.4.0",
+    "@proofwork/chain": "workspace:*",
+    "@proofwork/db": "workspace:*",
+    "@proofwork/github": "workspace:*",
+    "@x402/core": "^2.3.0",
+    "@x402/evm": "^2.3.0",
+    "express": "^5.1.0",
+    "viem": "^2.56.3",
+    "zod": "^4.5.4"
+  },
+  "devDependencies": {
+    "@proofwork/config": "workspace:*",
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.10.0"
+  }
+}

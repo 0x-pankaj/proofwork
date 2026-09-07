@@ -1,6 +1,6 @@
 import { and, eq, inArray } from "drizzle-orm";
 import type { Database } from "../client";
-import { claims, type X402Payment, x402Payments } from "../schema";
+import { claims, type NewX402Payment, type X402Payment, x402Payments } from "../schema";
 
 /**
  * Claim stakes are ordinary x402 payments: an agent pays a small amount to the treasury
@@ -37,4 +37,21 @@ export async function stakeInUse(db: Database, paymentId: string): Promise<boole
     )
     .limit(1);
   return row !== undefined;
+}
+
+/**
+ * Writes down a nanopayment. Idempotent by request id: Circle can retry a settlement
+ * notification, and a stake must not be created twice for one payment.
+ */
+export async function recordX402Payment(db: Database, input: NewX402Payment): Promise<X402Payment> {
+  const [row] = await db
+    .insert(x402Payments)
+    .values(input)
+    .onConflictDoUpdate({
+      target: x402Payments.requestId,
+      set: { payer: input.payer, amountUsdc: input.amountUsdc },
+    })
+    .returning();
+  if (!row) throw new Error("payment insert returned nothing");
+  return row;
 }
