@@ -7,7 +7,7 @@
     "test": "forge test",
     "fmt": "forge fmt",
     "snapshot": "forge snapshot",
-    "deploy:testnet": "forge script script/Deploy.s.sol:Deploy --rpc-url arc_testnet --account proofwork-deployer --broadcast --verify --verifier blockscout --verifier-url https://testnet.arcscan.app/api -vvv",
+    "deploy:testnet": "cd ../.. && bun run scripts/deploy-contracts.ts testnet",
     "export": "bun run script/export-abi.ts"
   }
 }

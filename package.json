@@ -18,10 +18,11 @@
     "db:migrate": "bun run --cwd packages/db migrate",
     "contracts:build": "bun run --cwd packages/contracts build",
     "contracts:test": "bun run --cwd packages/contracts test",
-    "contracts:deploy:testnet": "bun run --cwd packages/contracts deploy:testnet",
+    "contracts:deploy:testnet": "bun run scripts/deploy-contracts.ts testnet",
     "e2e:testnet": "bun run --cwd packages/core e2e:testnet",
     "contracts:export": "bun run --cwd packages/contracts export",
-    "circle:setup": "bun run scripts/circle-setup.ts"
+    "circle:setup": "bun run scripts/circle-setup.ts",
+    "contracts:deploy:mainnet": "bun run scripts/deploy-contracts.ts mainnet"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.12",
