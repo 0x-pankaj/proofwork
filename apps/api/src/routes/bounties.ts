@@ -206,13 +206,14 @@ bountyRoutes.post(
     const { txHash } = c.req.valid("json");
     const funding = await confirmFunding(c.env, txHash);
 
-    const expected = bounty.amountUsdc + bounty.feeUsdc;
-    if (funding.amountUsdc !== expected) {
+    // `JobFunded` reports the budget. The fee is pulled in the same transfer but is
+    // recorded separately on the job, so the budget is what this has to match.
+    if (funding.amountUsdc !== bounty.amountUsdc) {
       return fail(
         c,
         400,
         "wrong_amount",
-        `the escrow holds ${funding.amountUsdc} but the bounty is ${expected}`,
+        `the escrow was funded with ${funding.amountUsdc} but the bounty is ${bounty.amountUsdc}`,
       );
     }
     if (funding.client.toLowerCase() !== bounty.funderAddress.toLowerCase()) {
