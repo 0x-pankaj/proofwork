@@ -26,6 +26,7 @@
       "version": "0.0.0",
       "dependencies": {
         "@proofwork/chain": "workspace:*",
+        "@proofwork/circle": "workspace:*",
         "@proofwork/core": "workspace:*",
         "@proofwork/db": "workspace:*",
         "@proofwork/github": "workspace:*",
@@ -43,6 +44,17 @@
       "version": "0.0.0",
       "dependencies": {
         "viem": "^2.56.3",
+      },
+      "devDependencies": {
+        "@proofwork/config": "workspace:*",
+      },
+    },
+    "packages/circle": {
+      "name": "@proofwork/circle",
+      "version": "0.0.0",
+      "dependencies": {
+        "@circle-fin/developer-controlled-wallets": "^10.8.0",
+        "@proofwork/chain": "workspace:*",
       },
       "devDependencies": {
         "@proofwork/config": "workspace:*",
@@ -274,6 +286,8 @@
     "@proofwork/api": ["@proofwork/api@workspace:apps/api"],
 
     "@proofwork/chain": ["@proofwork/chain@workspace:packages/chain"],
+
+    "@proofwork/circle": ["@proofwork/circle@workspace:packages/circle"],
 
     "@proofwork/config": ["@proofwork/config@workspace:packages/config"],
 
