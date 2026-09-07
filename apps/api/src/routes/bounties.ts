@@ -84,11 +84,16 @@ bountyRoutes.get("/:id", async (c) => {
   if (!listing) return fail(c, 404, "not_found", "no such bounty");
 
   const { bounty, repo } = listing;
-  const [claims, submission, settlement] = await Promise.all([
+  const [claims, merged, open, settlement] = await Promise.all([
     store.activeClaimsFor(bounty.id),
     store.mergedSubmissionFor(bounty.id),
+    store.openSubmissionsFor(bounty.id),
     store.settlementForBounty(bounty.id),
   ]);
+
+  // The merged pull request is the one that matters, but an open one is what the page
+  // should show while the work is still in review.
+  const submission = merged ?? open[0];
 
   return c.json({
     ...summarise(c.env, bounty, repo.fullName),
