@@ -3,6 +3,7 @@ import type { Database } from "@proofwork/db";
 import type { GitHubClient, RepoRef } from "@proofwork/github";
 import express, { type Express, type NextFunction, type Request, type Response } from "express";
 import { type Env, facilitatorUrl, required } from "./env";
+import { FIT_PRICE_USDC, fitHandler } from "./fit";
 import { recording } from "./payments";
 import { price } from "./price";
 import { REVIEW_PRICE_USDC, reviewHandler } from "./review";
@@ -42,6 +43,14 @@ export function createApp(deps: AppDeps): Express {
   app.get("/health", (_req, res) => {
     res.json({ ok: true, service: "proofwork-x402", network: env.ARC_NETWORK ?? "testnet" });
   });
+
+  /** Whether a bounty is worth claiming, for a twentieth of a cent. */
+  app.get(
+    "/v1/bounties/fit",
+    gateway.require(price(FIT_PRICE_USDC)),
+    recording(deps.db, "/v1/bounties/fit"),
+    fitHandler(deps.db),
+  );
 
   /** A pre-review of a pull request against the issue it claims to close. */
   app.post(
