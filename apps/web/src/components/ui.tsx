@@ -50,7 +50,15 @@ export function Amount({
     lg: "text-2xl",
     xl: "text-4xl sm:text-5xl",
   } as const;
-  return <span className={`tabular font-mono ${sizes[size]} tracking-tight`}>{usdc(value)}</span>;
+
+  // At display sizes the ticker competes with the figure, so it is set down a step.
+  const [figure, ticker] = usdc(value).split(" ");
+  return (
+    <span className={`tabular font-mono ${sizes[size]} tracking-tight whitespace-nowrap`}>
+      {figure}
+      <span className={size === "xl" ? "ml-2 text-[0.45em] text-ink-faint" : "ml-1"}>{ticker}</span>
+    </span>
+  );
 }
 
 export function PageHeading({

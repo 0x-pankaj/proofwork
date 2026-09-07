@@ -44,7 +44,7 @@ export default async function BountyPage({ params }: { params: Promise<{ id: str
               rel="noreferrer"
               className="text-sm text-ink-soft underline decoration-rule hover:text-ink"
             >
-              Open the issue on GitHub
+              View on GitHub
             </a>
           </div>
           <h1 className="mt-3 text-3xl font-semibold tracking-tight text-balance">
