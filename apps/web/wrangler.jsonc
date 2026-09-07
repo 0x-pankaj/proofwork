@@ -9,6 +9,7 @@
   // The API is called through a binding, not over the public internet.
   "services": [{ "binding": "API", "service": "proofwork-api" }],
   "vars": {
+    "ARC_NETWORK": "testnet",
     "PUBLIC_API_URL": "https://proofwork-api.0xpankaj.workers.dev",
     "PUBLIC_X402_URL": "https://proofwork-x402.0xpankaj.workers.dev"
   }
