@@ -1,7 +1,7 @@
 import { type CircleClient, CircleCompliance, CircleWallets } from "@proofwork/circle";
 import { describe, expect, it, vi } from "vitest";
 import type { Env } from "./env";
-import { settleBountyById } from "./settlement";
+import { FEEDBACK_TAG, GIVE_FEEDBACK_SIGNATURE, settleBountyById } from "./settlement";
 import {
   createFakeStore,
   fakeAgent,
@@ -15,6 +15,7 @@ import {
 import type { CommentWriter } from "./webhooks/handlers/issues";
 
 const TX_HASH = "0x9f2c";
+const ERC8004_REPUTATION = "0x8004B663056A597Dffe9eCcC1965A193B7388713";
 const MERGE_SHA = "b".repeat(40);
 
 const env = {
@@ -130,7 +131,7 @@ describe("settleBountyById", () => {
     expect(context.store.claims[1]).toMatchObject({ status: "lost" });
   });
 
-  it("writes reputation for an agent", async () => {
+  it("records reputation locally for an agent with no on-chain identity", async () => {
     const context = deps();
     context.store.agents.set("proofwork-agent", fakeAgent());
     context.store.claims = [fakeClaim({ claimantKind: "agent", agentId: "agent-1", userId: null })];
@@ -138,7 +139,51 @@ describe("settleBountyById", () => {
     await settleBountyById(context, "bounty-1");
 
     expect(context.store.reputation).toEqual([
-      { agentId: "agent-1", bountyId: "bounty-1", score: 100 },
+      { agentId: "agent-1", bountyId: "bounty-1", score: 100, txHash: null },
+    ]);
+    // One contract call: the settlement. There is no ERC-8004 token to leave feedback on.
+    expect(context.create).toHaveBeenCalledTimes(1);
+  });
+
+  it("writes ERC-8004 feedback for an agent that owns an identity", async () => {
+    const context = deps();
+    context.store.agents.set("proofwork-agent", fakeAgent({ erc8004AgentId: 7n }));
+    context.store.claims = [fakeClaim({ claimantKind: "agent", agentId: "agent-1", userId: null })];
+
+    await settleBountyById(context, "bounty-1");
+
+    const feedback = context.create.mock.calls[1]?.[0];
+    expect(feedback?.contractAddress).toBe(ERC8004_REPUTATION);
+    expect(feedback?.abiFunctionSignature).toBe(GIVE_FEEDBACK_SIGNATURE);
+    expect(feedback?.abiParameters?.slice(0, 5)).toEqual([
+      "7",
+      "100",
+      "0",
+      FEEDBACK_TAG,
+      "0x-pankaj/proofwork",
+    ]);
+    // A different idempotency key from the settlement, or Circle would collapse the two.
+    expect(feedback?.idempotencyKey).not.toBe("bounty-1");
+    expect(context.store.reputation).toEqual([
+      { agentId: "agent-1", bountyId: "bounty-1", score: 100, txHash: TX_HASH },
+    ]);
+  });
+
+  it("still records reputation when the registry write fails", async () => {
+    const context = deps();
+    context.store.agents.set("proofwork-agent", fakeAgent({ erc8004AgentId: 7n }));
+    context.store.claims = [fakeClaim({ claimantKind: "agent", agentId: "agent-1", userId: null })];
+    context.create.mockImplementationOnce(async () => ({ data: { id: "circle-tx-1" } }));
+    context.create.mockImplementationOnce(async () => {
+      throw new Error("registry unreachable");
+    });
+
+    const outcome = await settleBountyById(context, "bounty-1");
+
+    // The payment stands. Feedback is a footnote to it, not a condition of it.
+    expect(outcome.kind).toBe("settled");
+    expect(context.store.reputation).toEqual([
+      { agentId: "agent-1", bountyId: "bounty-1", score: 100, txHash: null },
     ]);
   });
 

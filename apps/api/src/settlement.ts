@@ -1,6 +1,13 @@
-import { activeNetwork, bpsOf, proofworkJobsAddress, txUrl } from "@proofwork/chain";
-import type { CircleCompliance, CircleWallets } from "@proofwork/circle";
 import {
+  activeNetwork,
+  bpsOf,
+  erc8004ReputationAddress,
+  proofworkJobsAddress,
+  txUrl,
+} from "@proofwork/chain";
+import { type CircleCompliance, type CircleWallets, succeeded } from "@proofwork/circle";
+import {
+  deliverableHash,
   MERGED_REPUTATION_SCORE,
   type SettlementContext,
   type SettlementOutcome,
@@ -11,6 +18,7 @@ import type { Bounty, Claim, RepoWithInstallation, Submission } from "@proofwork
 import { settledComment, settlementFailedComment } from "@proofwork/github";
 import { type Env, required } from "./env";
 import type { Store } from "./store";
+import { agentMetadataUrl } from "./urls";
 import type { CommentWriter } from "./webhooks/handlers/issues";
 import { repoRef } from "./webhooks/repo-ref";
 
@@ -23,6 +31,12 @@ import { repoRef } from "./webhooks/repo-ref";
  */
 
 export const SETTLE_SIGNATURE = "settle(uint256,address,bytes32,bytes32)";
+
+export const GIVE_FEEDBACK_SIGNATURE =
+  "giveFeedback(uint256,int128,uint8,string,string,string,string,bytes32)";
+
+/** The tag every Proofwork settlement writes, so its feedback can be read back apart. */
+export const FEEDBACK_TAG = "proofwork/merged";
 
 export interface SettlementDeps {
   store: Store;
@@ -192,11 +206,91 @@ export async function settleBountyById(
     },
 
     async recordReputation({ agentId, score }) {
-      await store.recordReputationEvent({ agentId, bountyId, score });
+      // The local record is written either way: a registry that is unreachable must not
+      // erase the fact that this agent was paid for a merged pull request.
+      let txHash: string | null = null;
+      try {
+        txHash = loaded ? await writeFeedback(deps, loaded, agentId, score) : null;
+      } catch (error) {
+        console.error("reputation feedback failed", { bountyId, agentId, error: String(error) });
+      }
+      await store.recordReputationEvent({ agentId, bountyId, score, txHash });
     },
   };
 
   return settleBounty(bountyId, ports);
+}
+
+/**
+ * Writes the settlement to the ERC-8004 reputation registry.
+ *
+ * An agent's record has to outlive us to be worth anything, so a merged bounty leaves
+ * feedback on chain rather than only in our database. The verifier signs it — the
+ * registry refuses feedback from the agent's own owner, and we are not it.
+ *
+ * Best effort by design: the money has already moved, and a registry that is down must
+ * not turn a completed payment into a failed one. Returns the hash if it landed.
+ */
+async function writeFeedback(
+  deps: SettlementDeps,
+  loaded: Loaded,
+  agentId: string,
+  score: number,
+): Promise<string | null> {
+  const { env, store } = deps;
+  const agent = await store.agentById(agentId);
+  // An agent may work without an ERC-8004 identity; then there is nothing to write to.
+  if (!agent?.erc8004AgentId) return null;
+
+  const { bounty, submission, found } = loaded;
+  if (!submission.mergeSha) return null;
+
+  const { id } = await deps.wallets.executeContract({
+    walletId: required(env, "CIRCLE_VERIFIER_WALLET_ID"),
+    contractAddress: erc8004ReputationAddress(activeNetwork(env), env),
+    abiFunctionSignature: GIVE_FEEDBACK_SIGNATURE,
+    abiParameters: [
+      agent.erc8004AgentId.toString(),
+      String(score),
+      "0",
+      FEEDBACK_TAG,
+      found.repo.fullName,
+      submission.prUrl,
+      agent.metadataUri ?? agentMetadataUrl(env, agent.id),
+      deliverableHash({
+        repoFullName: found.repo.fullName,
+        prNumber: submission.prNumber,
+        mergeSha: submission.mergeSha,
+      }),
+    ],
+    idempotencyKey: await feedbackKey(bounty.id),
+  });
+
+  const transaction = await deps.wallets.waitForTransaction(id, { timeoutMs: 30_000 });
+  if (!succeeded(transaction)) {
+    throw new Error(`reputation feedback ended ${transaction.state}`);
+  }
+
+  console.log("reputation", { bountyId: bounty.id, agentId, txHash: transaction.txHash });
+  return transaction.txHash ?? null;
+}
+
+/**
+ * A UUID derived from the bounty id. Circle keys retries by UUID, and the settlement
+ * already spent the bounty's own id, so feedback needs a different but equally stable one.
+ */
+async function feedbackKey(bountyId: string): Promise<string> {
+  const digest = new Uint8Array(
+    await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`feedback:${bountyId}`)),
+  );
+  const hex = [...digest.slice(0, 16)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+  return [
+    hex.slice(0, 8),
+    hex.slice(8, 12),
+    `5${hex.slice(13, 16)}`,
+    `a${hex.slice(17, 20)}`,
+    hex.slice(20, 32),
+  ].join("-");
 }
 
 /** What each party is owed, for the API and the UI. Mirrors the contract exactly. */
