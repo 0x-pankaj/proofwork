@@ -7,7 +7,8 @@
   "compatibility_flags": ["nodejs_compat"],
   "observability": { "enabled": true },
   "vars": {
-    "ARC_NETWORK": "testnet"
+    "ARC_NETWORK": "testnet",
+    "PUBLIC_WEB_URL": "http://localhost:3000"
   }
   // Secrets are set with `wrangler secret put`, never committed:
   //   DATABASE_URL, GITHUB_APP_ID, GITHUB_APP_PRIVATE_KEY, GITHUB_WEBHOOK_SECRET,

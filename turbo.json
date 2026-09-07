@@ -22,7 +22,13 @@
     "GITHUB_CLIENT_SECRET",
     "AUTH_SECRET",
     "AUTH_URL",
-    "ANTHROPIC_API_KEY"
+    "ANTHROPIC_API_KEY",
+    "PUBLIC_WEB_URL",
+    "PUBLIC_API_URL",
+    "INTERNAL_API_KEY",
+    "DEPLOYER_ADDRESS",
+    "TREASURY",
+    "CIRCLE_BLOCKCHAIN"
   ],
   "globalDependencies": ["packages/config/**"],
   "tasks": {

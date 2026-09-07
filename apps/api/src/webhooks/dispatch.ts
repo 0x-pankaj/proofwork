@@ -1,13 +1,15 @@
 import {
   installationEventSchema,
   installationRepositoriesEventSchema,
+  issuesEventSchema,
   parseEvent,
 } from "@proofwork/github";
 import type { Env } from "../env";
-import { db } from "../services";
+import { db, github } from "../services";
 import { databaseStore } from "../store";
 import type { GitHubEventHandler } from "./github";
 import { handleInstallation, handleInstallationRepositories } from "./handlers/installation";
+import { handleIssues } from "./handlers/issues";
 
 /**
  * Routes a verified delivery to the handler for its event.
@@ -26,6 +28,11 @@ export function githubDispatcher(env: Env): GitHubEventHandler {
         return handleInstallationRepositories(
           store,
           parseEvent(event, installationRepositoriesEventSchema, payload),
+        );
+      case "issues":
+        return handleIssues(
+          { store, github: github(env), env },
+          parseEvent(event, issuesEventSchema, payload),
         );
       default:
         return;

@@ -8,6 +8,9 @@ export interface Env extends ChainEnv {
   ARC_NETWORK: string;
   DATABASE_URL: string;
 
+  /** Where the web app lives, for the links Proofwork writes into GitHub comments. */
+  PUBLIC_WEB_URL: string;
+
   GITHUB_APP_ID: string;
   GITHUB_APP_PRIVATE_KEY: string;
   GITHUB_WEBHOOK_SECRET: string;

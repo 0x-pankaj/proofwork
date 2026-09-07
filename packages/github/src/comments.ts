@@ -9,6 +9,7 @@ import { formatUsdc } from "@proofwork/chain";
  */
 
 export type CommentKind =
+  | "funding-invite"
   | "funded"
   | "pending-accept"
   | "claimed"
@@ -26,14 +27,37 @@ export interface RenderedComment {
   body: string;
 }
 
-/** Invisible in the rendered comment; the handle we use to update rather than repeat. */
-export function commentMarker(bountyId: string, kind: CommentKind): string {
-  return `<!-- proofwork:${bountyId}:${kind} -->`;
+/**
+ * Invisible in the rendered comment; the handle we use to update rather than repeat.
+ * The subject is a bounty id, or `issue-<number>` before a bounty exists.
+ */
+export function commentMarker(subject: string, kind: CommentKind): string {
+  return `<!-- proofwork:${subject}:${kind} -->`;
 }
 
-function render(bountyId: string, kind: CommentKind, lines: string[]): RenderedComment {
-  const marker = commentMarker(bountyId, kind);
+function render(subject: string, kind: CommentKind, lines: string[]): RenderedComment {
+  const marker = commentMarker(subject, kind);
   return { marker, body: `${lines.join("\n")}\n\n${marker}` };
+}
+
+export interface FundingInviteInput {
+  issueNumber: number;
+  amountUsdc: bigint;
+  fundUrl: string;
+}
+
+/**
+ * The answer to a `bounty:$50` label. The label states an intent; the money still has to
+ * be escrowed, and this is the one click that does it.
+ */
+export function fundingInviteComment(input: FundingInviteInput): RenderedComment {
+  return render(`issue-${input.issueNumber}`, "funding-invite", [
+    `### ${formatUsdc(input.amountUsdc)} bounty, not funded yet`,
+    "",
+    `[Escrow it on Arc](${input.fundUrl}) and this issue pays out automatically the moment a pull request fixing it is merged.`,
+    "",
+    "Nothing is reserved until the escrow transaction confirms.",
+  ]);
 }
 
 export interface FundedInput {
