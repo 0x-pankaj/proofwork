@@ -9,7 +9,8 @@
   // The API is called through a binding, not over the public internet.
   "services": [{ "binding": "API", "service": "proofwork-api" }],
   "vars": {
-    "PUBLIC_API_URL": "https://proofwork-api.0xpankaj.workers.dev"
+    "PUBLIC_API_URL": "https://proofwork-api.0xpankaj.workers.dev",
+    "PUBLIC_X402_URL": "https://proofwork-x402.0xpankaj.workers.dev"
   }
   // Secrets are set with `wrangler secret put`, never committed:
   //   AUTH_SECRET, AUTH_GITHUB_ID, AUTH_GITHUB_SECRET, INTERNAL_API_KEY
