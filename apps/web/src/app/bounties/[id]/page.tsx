@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Timeline, type TimelineStep } from "@/components/timeline";
 import { Amount, ExplorerLink, Panel, StatusPill } from "@/components/ui";
+import { WalletProvider } from "@/components/wallet-provider";
 import { ApiError, api } from "@/lib/api";
 import { shortAddress, timeAgo, usdc } from "@/lib/format";
 import type { BountyDetail } from "@/lib/types";
@@ -81,7 +82,11 @@ export default async function BountyPage({ params }: { params: Promise<{ id: str
         </section>
 
         <aside className="space-y-6">
-          {quote?.reclaimable ? <ReclaimPanel bountyId={bounty.id} quote={quote} /> : null}
+          {quote?.reclaimable ? (
+            <WalletProvider>
+              <ReclaimPanel bountyId={bounty.id} quote={quote} />
+            </WalletProvider>
+          ) : null}
 
           <Panel className="p-5">
             <h2 className="text-sm font-medium tracking-wide text-ink-faint uppercase">
