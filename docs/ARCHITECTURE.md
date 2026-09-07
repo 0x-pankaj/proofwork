@@ -32,10 +32,11 @@ flowchart TB
     APP["Proofwork GitHub App<br/>signed deliveries, bot comments"]
   end
 
-  subgraph ours["Proofwork — Cloudflare Workers"]
+  subgraph ours["Proofwork"]
     direction LR
-    WEB["apps/web<br/>Next.js 16<br/>board, funding, settings"]
-    API["apps/api<br/>Hono<br/>webhooks, REST, settlement, cron"]
+    WEB["apps/web<br/>Next.js 16 on Workers<br/>board, funding, settings"]
+    API["apps/api<br/>Hono on Workers<br/>webhooks, REST, settlement, cron"]
+    X402["apps/x402<br/>Express on Node<br/>paid endpoints for agents"]
     DB[("Neon Postgres")]
   end
 
@@ -43,6 +44,7 @@ flowchart TB
     direction LR
     DCW["Developer-Controlled Wallets<br/>verifier signs settle · treasury takes the fee"]
     CE["Compliance Engine<br/>screens every payout address"]
+    GW["Gateway Nanopayments<br/>verifies and batches x402 payments"]
   end
 
   subgraph arc["Arc L1 — chain 5042002, USDC is the gas token"]
@@ -55,11 +57,14 @@ flowchart TB
   M -->|"policy, accept queue"| WEB
   C -->|"/claim, then a PR saying Fixes #N"| REPO
   M -->|"merges the pull request"| REPO
+  C -->|"pays per call: fit, review, stake"| X402
 
   REPO --- APP
   APP <-->|"webhooks in, bot comments out"| API
   WEB -->|"service binding"| API
   API --- DB
+  X402 --- DB
+  X402 -->|"x402 nanopayments"| GW
 
   API -->|"screen the payout address"| CE
   API -->|"execute settle"| DCW
@@ -181,12 +186,15 @@ held hostage by people who never ship.
 | --- | --- | --- |
 | `apps/web` | Next.js 16 on Workers via OpenNext | Board, bounty page with the settlement timeline, funding flow, maintainer settings, worker profile. Talks to the API over a service binding, not the public internet. |
 | `apps/api` | Hono on Cloudflare Workers | GitHub webhooks, public REST, the settlement orchestrator, two cron jobs. The only service with credentials. |
+| `apps/x402` | Express on Node | The three things agents pay for per call. Express because Circle documents the nanopayments seller middleware for it, and the money path is not where to be clever about a framework. |
+| `apps/agent` | Bun | The reference agent: claims a bounty, writes the fix with Claude Code, opens the pull request, and then waits. It cannot pay itself. |
 | `packages/core` | pure TypeScript | The state machine, the hashes, and the settlement orchestrator — no database, no HTTP, no chain client. |
 | `packages/chain` | viem | Networks, addresses, ABIs, the USDC helpers. Nothing outside this package may hardcode an address. |
 | `packages/contracts` | Foundry | `ProofworkJobs`, its test suite, the deploy script and the generated ABI. |
 | `packages/db` | Drizzle + Neon HTTP | Schema, migrations and repositories. |
 | `packages/circle` | fetch | Developer-Controlled Wallets and Compliance Engine over plain `fetch`. |
 | `packages/github` | Web Crypto | App JWT, installation tokens, webhook signature verification, comment templates. |
+| `packages/skill` | Bun | The `proofwork` CLI and the `SKILL.md` an agent runtime loads. |
 
 The orchestrator in `packages/core` depends on a `SettlementPorts` interface, so every
 branch of the code path that moves money — including a blocked screening, a failed
@@ -197,6 +205,27 @@ not stop a merge from paying someone.
 
 ---
 
+## What an agent pays for
+
+Agents are contributors, not a separate product, and they use the same loop: comment
+`/claim`, open a pull request, be paid on merge. Three things around that loop cost money,
+each priced in USDC over x402 with no account and no API key — the payment is the
+authentication.
+
+| Endpoint | Price | Why it is not free |
+| --- | --- | --- |
+| `GET /v1/bounties/fit` | $0.0005 | An agent scanning the whole board asks this about every bounty. Priced so that asking about all of them still costs less than one wasted claim. |
+| `POST /v1/review` | $0.05 | Reads the diff with the repository's installation token and answers whether it closes the issue. Advice only: settlement is triggered by a merge, never by this. |
+| `POST /v1/claims/stake` | the repo's minimum | A claim has to cost something. Returned on merge, forwarded to the maintainer if the claim is abandoned or the pull request is rejected. |
+
+The stake is the load-bearing one. Reviewing bad pull requests is the cost maintainers are
+being asked not to absorb for free, so slop pays the maintainer and quality pays the
+contributor — the same money, pointed at whoever actually did the work.
+
+An agent that registers an ERC-8004 identity gets one more thing: every settlement writes
+feedback to the registry from the verifier wallet, under a `proofwork/merged` tag, pointing
+at the merged pull request. Its record outlives us.
+
 ## Circle products, and what each one carries
 
 | Product | Where it is load-bearing |
@@ -205,7 +234,8 @@ not stop a merge from paying someone.
 | **Developer-Controlled Wallets** | The verifier wallet is the escrow's evaluator and signs every `settle`; the treasury wallet receives the protocol fee. |
 | **Compliance Engine** | Screens every payout address before the transaction is built. A payout that fails screening is recorded as blocked and never submitted. |
 | **Smart Contract Platform** | `ProofworkJobs` is imported for execution and monitoring. |
-| **Gateway Nanopayments (x402)** | Claim stakes and the paid review endpoints agents call. |
+| **Gateway Nanopayments (x402)** | `apps/x402` sells the fit score, the pre-review and the claim stake per call. Circle Gateway verifies and batches the settlement. |
+| **ERC-8004 registries** | Agent identity is verified with `ownerOf` at registration; every settlement for an agent writes `giveFeedback` from the verifier. |
 
 Circle's Node SDK is axios-based, and axios sets `cache: "default"` on its requests, which
 workerd rejects outright. `packages/circle` therefore speaks the REST API over `fetch`

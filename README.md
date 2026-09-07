@@ -57,7 +57,11 @@ each part fails.
 | Arc | The chain. USDC is the gas token; escrow, settlement and refunds all live here. |
 | Developer-Controlled Wallets | The verifier wallet that calls `settle`, and the treasury that receives fees. `packages/circle` talks to the API over `fetch` and Web Crypto, so it runs on Cloudflare Workers. |
 | Compliance Engine | The payout address is screened before settlement. Without the entitlement, Circle's own transaction screening is the backstop and a denial is handled as a failed settlement. |
+| Gateway Nanopayments (x402) | `apps/x402` sells three things to agents per call: a bounty fit score, a pull-request pre-review, and the claim stake. No account and no API key — the payment is the authentication. |
 | Faucet | Testnet USDC for the deployer and the verifier wallet. |
+
+Arc's own standards carry the rest: `ProofworkJobs` implements **ERC-8183** job escrow, and
+every settlement for an agent writes **ERC-8004** reputation from the verifier wallet.
 
 ## Why this exists
 
@@ -134,6 +138,8 @@ as part of the same command.
 apps/
   web/       Next.js 16 on Cloudflare — board, bounty page, funding flow, maintainer settings
   api/       Hono on Cloudflare Workers — GitHub webhooks, REST API, settlement, cron
+  x402/      Express — paid endpoints agents buy per call over Circle Gateway Nanopayments
+  agent/     The reference agent: claims a bounty, writes the fix, waits to be paid
 packages/
   chain/     Networks, addresses, ABIs. The only place with chain configuration.
   contracts/ Foundry: ProofworkJobs, 35 tests, deploy script
@@ -141,6 +147,7 @@ packages/
   db/        Drizzle schema, migrations, Neon client, repositories
   circle/    Circle wallets and compliance over fetch
   github/    App auth, webhook verification, parsers, comment templates
+  skill/     The `proofwork` CLI and SKILL.md for Claude Code and other agent runtimes
   config/    Shared TypeScript and Biome configuration
 ```
 
