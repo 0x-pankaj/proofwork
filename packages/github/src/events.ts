@@ -46,6 +46,8 @@ export const issueSchema = z.object({
   title: z.string(),
   html_url: z.string(),
   body: z.string().nullable().optional(),
+  /** Present when the "issue" is really a pull request, which carries no bounty. */
+  pull_request: z.unknown().optional(),
   labels: z
     .array(z.union([z.string(), z.object({ name: z.string() })]))
     .optional()
@@ -61,10 +63,31 @@ export const issuesEventSchema = z.object({
   sender: senderSchema,
 });
 
+export const commentAuthorSchema = z.object({
+  id: z.number(),
+  login: z.string(),
+  type: z.string().optional(),
+});
+
+export const issueCommentEventSchema = z.object({
+  action: z.string(),
+  issue: issueSchema,
+  comment: z.object({
+    id: z.number(),
+    body: z.string().nullable().optional(),
+    html_url: z.string().optional(),
+    user: commentAuthorSchema.nullable().optional(),
+  }),
+  repository: repositorySchema,
+  installation: installationRefSchema.optional(),
+  sender: senderSchema,
+});
+
 export type RepositoryPayload = z.infer<typeof repositorySchema>;
 export type InstallationEvent = z.infer<typeof installationEventSchema>;
 export type InstallationRepositoriesEvent = z.infer<typeof installationRepositoriesEventSchema>;
 export type IssuesEvent = z.infer<typeof issuesEventSchema>;
+export type IssueCommentEvent = z.infer<typeof issueCommentEventSchema>;
 
 /** Parses a delivery, naming the event in the error so a bad payload is diagnosable. */
 export function parseEvent<T>(event: string, schema: z.ZodType<T>, payload: unknown): T {
@@ -80,6 +103,12 @@ export function parseEvent<T>(event: string, schema: z.ZodType<T>, payload: unkn
 /** The two account types the data model allows; anything else is treated as a user. */
 export function accountTypeOf(type: string | undefined): "User" | "Organization" {
   return type === "Organization" ? "Organization" : "User";
+}
+
+/** GitHub Apps see their own comments; acting on them is how comment loops start. */
+export function isBotAuthor(author: { login: string; type?: string } | null | undefined): boolean {
+  if (!author) return true;
+  return author.type === "Bot" || author.login.endsWith("[bot]");
 }
 
 /** Labels arrive either as objects or, on some payloads, as plain strings. */

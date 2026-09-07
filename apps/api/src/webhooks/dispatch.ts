@@ -1,6 +1,7 @@
 import {
   installationEventSchema,
   installationRepositoriesEventSchema,
+  issueCommentEventSchema,
   issuesEventSchema,
   parseEvent,
 } from "@proofwork/github";
@@ -9,6 +10,7 @@ import { db, github } from "../services";
 import { databaseStore } from "../store";
 import type { GitHubEventHandler } from "./github";
 import { handleInstallation, handleInstallationRepositories } from "./handlers/installation";
+import { handleIssueComment } from "./handlers/issue-comment";
 import { handleIssues } from "./handlers/issues";
 
 /**
@@ -28,6 +30,11 @@ export function githubDispatcher(env: Env): GitHubEventHandler {
         return handleInstallationRepositories(
           store,
           parseEvent(event, installationRepositoriesEventSchema, payload),
+        );
+      case "issue_comment":
+        return handleIssueComment(
+          { store, github: github(env), env },
+          parseEvent(event, issueCommentEventSchema, payload),
         );
       case "issues":
         return handleIssues(
