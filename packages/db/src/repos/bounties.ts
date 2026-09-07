@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, inArray, lt, notInArray } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNull, lt, notInArray } from "drizzle-orm";
 import type { Database } from "../client";
 import { type Bounty, bounties, type Repo, repos } from "../schema";
 
@@ -202,6 +202,26 @@ export async function forceBountyStatus(
     .update(bounties)
     .set({ status: to, updatedAt: new Date(), ...extra })
     .where(and(eq(bounties.id, id), notInArray(bounties.status, TERMINAL)))
+    .returning({ id: bounties.id });
+  return updated.length > 0;
+}
+
+/**
+ * Writes down a refund that has already happened on chain.
+ *
+ * Deliberately not `forceBountyStatus`: that one refuses to touch a terminal bounty, and
+ * the ordinary case here is a bounty the sweeper already marked expired. The money has
+ * moved either way — refusing to record it would only lose the receipt.
+ */
+export async function recordBountyRefund(
+  db: Database,
+  id: string,
+  refund: { status: Bounty["status"]; txHash: string },
+): Promise<boolean> {
+  const updated = await db
+    .update(bounties)
+    .set({ status: refund.status, refundTxHash: refund.txHash, updatedAt: new Date() })
+    .where(and(eq(bounties.id, id), isNull(bounties.refundTxHash)))
     .returning({ id: bounties.id });
   return updated.length > 0;
 }

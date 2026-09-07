@@ -59,6 +59,7 @@ import {
   type RepoWithInstallation,
   type ReputationInput,
   readChainCursor,
+  recordBountyRefund,
   recordReputationEvent,
   reposForUser,
   repoWithInstallationByGithubId,
@@ -134,6 +135,10 @@ export interface Store {
     extra?: { settleTxHash?: string; jobId?: bigint },
   ): Promise<boolean>;
   expireBounties(now: Date): Promise<Bounty[]>;
+  recordBountyRefund(
+    id: string,
+    refund: { status: Bounty["status"]; txHash: string },
+  ): Promise<boolean>;
   bountiesForFunder(funderUserId: string): Promise<BountyListing[]>;
   claimsForUser(userId: string): Promise<ClaimListing[]>;
   settlementsForUser(userId: string): Promise<SettlementListing[]>;
@@ -233,6 +238,7 @@ export function databaseStore(db: Database): Store {
     markBountyFunding: (id, createTxHash) => markBountyFunding(db, id, createTxHash),
     confirmBountyFunded: (id, input) => confirmBountyFunded(db, id, input),
     moveBountyStatus: (id, from, to) => moveBountyStatus(db, id, from, to),
+    recordBountyRefund: (id, refund) => recordBountyRefund(db, id, refund),
     acceptBounty: (id) => acceptBounty(db, id),
     completeBounty: (id, input) => completeBounty(db, id, input),
 

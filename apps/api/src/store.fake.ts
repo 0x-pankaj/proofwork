@@ -135,6 +135,7 @@ export function fakeBounty(overrides: Partial<Bounty> = {}): Bounty {
     expiresAt: new Date("2026-09-30T00:00:00Z"),
     createTxHash: "0xfund",
     settleTxHash: null,
+    refundTxHash: null,
     circleTxId: null,
     createdAt: new Date("2026-09-07T00:00:00Z"),
     updatedAt: new Date("2026-09-07T00:00:00Z"),
@@ -431,6 +432,17 @@ export function createFakeStore(seed: FakeStoreSeed | RepoWithInstallation[] = {
       if (!bounty) return false;
       if (["settled", "rejected", "expired", "cancelled"].includes(bounty.status)) return false;
       store.bounties.set(id, { ...bounty, status: to, ...extra });
+      return true;
+    },
+
+    async recordBountyRefund(id, refund) {
+      const bounty = store.bounties.get(id);
+      if (!bounty || bounty.refundTxHash) return false;
+      store.bounties.set(id, {
+        ...bounty,
+        status: refund.status,
+        refundTxHash: refund.txHash,
+      });
       return true;
     },
 

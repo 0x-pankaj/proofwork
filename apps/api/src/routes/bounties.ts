@@ -6,7 +6,14 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { type InternalVariables, internalOnly } from "../auth";
 import { type Env, required } from "../env";
-import { confirmFunding, fundingCalls, readFeeBps } from "../funding";
+import {
+  confirmFunding,
+  confirmRefund,
+  fundingCalls,
+  readFeeBps,
+  reclaimCall,
+  reclaimPlan,
+} from "../funding";
 import { fail } from "../http";
 import { circleCompliance, circleWallets } from "../services";
 import { settleBountyById, splitOf } from "../settlement";
@@ -269,6 +276,68 @@ bountyRoutes.post(
 );
 
 /** Re-runs a settlement that failed. Idempotent: a paid bounty answers "skipped". */
+/**
+ * What it would take to get this escrow back, and the call that does it.
+ *
+ * A funder whose bounty went nowhere should not have to open a block explorer to be made
+ * whole. The API decides which of the two unwinding calls applies and hands back calldata;
+ * the funder signs it in their own wallet, exactly as they signed the funding.
+ */
+bountyRoutes.get("/:id/reclaim", internalOnly, async (c) => {
+  const store = c.get("store")();
+  const bounty = await store.bountyById(c.req.param("id"));
+  if (!bounty) return fail(c, 404, "not_found", "no such bounty");
+
+  const plan = reclaimPlan({
+    status: bounty.status,
+    jobId: bounty.jobId,
+    expiresAt: bounty.expiresAt,
+    activeClaims: (await store.activeClaimsFor(bounty.id)).length,
+    now: new Date(),
+  });
+
+  if (!plan.reclaimable) return c.json({ reclaimable: false, reason: plan.reason });
+
+  return c.json({
+    reclaimable: true,
+    kind: plan.kind,
+    reason: plan.reason,
+    funderAddress: bounty.funderAddress,
+    amountUsdc: String(bounty.amountUsdc + bounty.feeUsdc),
+    call: reclaimCall(c.env, bounty.jobId as bigint, plan.kind),
+  });
+});
+
+/** Records a refund the funder has already sent, after reading it back off Arc. */
+bountyRoutes.post("/:id/reclaim", internalOnly, zValidator("json", confirmSchema), async (c) => {
+  const store = c.get("store")();
+  const bounty = await store.bountyById(c.req.param("id"));
+  if (!bounty) return fail(c, 404, "not_found", "no such bounty");
+  if (bounty.jobId === null) return fail(c, 409, "not_funded", "nothing is escrowed yet");
+
+  const { txHash } = c.req.valid("json");
+  const refund = await confirmRefund(c.env, txHash);
+
+  if (refund.jobId !== bounty.jobId) {
+    return fail(c, 400, "wrong_job", "that transaction refunded a different job");
+  }
+
+  // Expiry and cancellation are different endings and the board should say which.
+  const to = bounty.expiresAt.getTime() <= Date.now() ? "expired" : "cancelled";
+  await store.recordBountyRefund(bounty.id, { status: to, txHash });
+  console.log("refunded", {
+    bountyId: bounty.id,
+    jobId: String(bounty.jobId),
+    txHash,
+  });
+
+  return c.json({
+    status: to,
+    amountUsdc: String(refund.amountUsdc),
+    txUrl: txUrl(txHash, c.env),
+  });
+});
+
 bountyRoutes.post("/:id/retry-settlement", internalOnly, async (c) => {
   const store = c.get("store")();
   const outcome = await settleBountyById(
@@ -308,6 +377,7 @@ function summarise(env: Env, bounty: Bounty, repoFullName: string) {
     createdAt: bounty.createdAt,
     createTxUrl: bounty.createTxHash ? txUrl(bounty.createTxHash, env) : null,
     settleTxUrl: bounty.settleTxHash ? txUrl(bounty.settleTxHash, env) : null,
+    refundTxUrl: bounty.refundTxHash ? txUrl(bounty.refundTxHash, env) : null,
   };
 }
 

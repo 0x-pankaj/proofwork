@@ -76,6 +76,8 @@ export const bounties = pgTable(
     expiresAt: timestamp({ withTimezone: true }).notNull(),
     createTxHash: text(),
     settleTxHash: text(),
+    /** Set when the escrow went back to the funder instead of being paid out. */
+    refundTxHash: text(),
     circleTxId: text(),
 
     createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),

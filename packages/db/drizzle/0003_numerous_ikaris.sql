@@ -1,0 +1,1 @@
+ALTER TABLE "bounties" ADD COLUMN "refund_tx_hash" text;

@@ -118,3 +118,108 @@ export async function confirmFunding(env: Env, txHash: string): Promise<Confirme
     amountUsdc: funded.args.amount,
   };
 }
+
+// --- unwinding ---------------------------------------------------------------------
+
+/** The two ways an escrow comes back, both of them on the contract. */
+export type ReclaimKind = "cancel" | "claimRefund";
+
+export type ReclaimPlan =
+  | { reclaimable: true; kind: ReclaimKind; reason: string }
+  | { reclaimable: false; reason: string };
+
+/** Statuses where the money is on chain and has not been paid out or returned. */
+const HOLDS_ESCROW: ReadonlyArray<string> = [
+  "pending_accept",
+  "open",
+  "claimed",
+  "submitted",
+  "expired",
+];
+
+export interface ReclaimInput {
+  status: string;
+  jobId: bigint | null;
+  expiresAt: Date;
+  activeClaims: number;
+  now: Date;
+}
+
+/**
+ * Which way an escrow comes back, if it can.
+ *
+ * The two calls are not interchangeable. `claimRefund` is permissionless once the deadline
+ * passes, so a funder never needs our goodwill to be made whole. `cancel` is the funder's
+ * own and only before anyone starts.
+ *
+ * The contract means to refuse `cancel` once a provider is assigned — but Proofwork assigns
+ * the provider inside `settle`, so on chain that guard never fires before payout. The claim
+ * list is checked here instead, so a funder cannot pull the escrow out from under someone
+ * who is already working.
+ */
+export function reclaimPlan(input: ReclaimInput): ReclaimPlan {
+  if (input.jobId === null) {
+    return { reclaimable: false, reason: "nothing is escrowed against this bounty yet" };
+  }
+  if (!HOLDS_ESCROW.includes(input.status)) {
+    return { reclaimable: false, reason: `a ${input.status} bounty no longer holds escrow` };
+  }
+  if (input.expiresAt.getTime() <= input.now.getTime()) {
+    return {
+      reclaimable: true,
+      kind: "claimRefund",
+      reason: "the deadline has passed, so anyone can return the escrow to the funder",
+    };
+  }
+  if (input.activeClaims > 0) {
+    return {
+      reclaimable: false,
+      reason:
+        "someone is working on it — the escrow unlocks when they deliver or the deadline passes",
+    };
+  }
+  return { reclaimable: true, kind: "cancel", reason: "nobody has claimed it yet" };
+}
+
+/** The call that returns the escrow. Sent from the funder's own wallet, like funding was. */
+export function reclaimCall(env: Env, jobId: bigint, kind: ReclaimKind): Call {
+  return {
+    to: proofworkJobsAddress(activeNetwork(env), env),
+    data: encodeFunctionData({ abi: proofworkJobsAbi, functionName: kind, args: [jobId] }),
+  };
+}
+
+export interface ConfirmedRefund {
+  jobId: bigint;
+  client: string;
+  amountUsdc: bigint;
+}
+
+/**
+ * Reads a refund back off chain.
+ *
+ * Same rule as funding: the caller's word is only a pointer. The receipt has to have
+ * succeeded and to carry our contract's own `Refunded` event, or nothing is written down.
+ */
+export async function confirmRefund(env: Env, txHash: string): Promise<ConfirmedRefund> {
+  const network = activeNetwork(env);
+  const contract = proofworkJobsAddress(network, env).toLowerCase();
+  const receipt = await publicClient(env).waitForTransactionReceipt({ hash: txHash as Hex });
+
+  if (receipt.status !== "success") {
+    throw new Error(`refund transaction ${txHash} reverted`);
+  }
+
+  const logs = receipt.logs.filter((log) => log.address.toLowerCase() === contract);
+  const refunded = parseEventLogs({ abi: proofworkJobsAbi, eventName: "Refunded", logs })[0];
+
+  if (!refunded) {
+    throw new Error(`transaction ${txHash} did not refund a job on ${contract}`);
+  }
+
+  return {
+    jobId: refunded.args.jobId,
+    client: refunded.args.client,
+    amountUsdc: refunded.args.amount,
+  };
+}
