@@ -10,8 +10,11 @@ import {
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
-import type { Env } from "./env";
+import { type Env, required } from "./env";
 import { fail } from "./http";
+import { db } from "./services";
+import { receiveGitHubWebhook } from "./webhooks/github";
+import { databaseWebhookStore } from "./webhooks/store";
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -53,6 +56,18 @@ app.get("/v1/config", (c) => {
     proofworkJobs: proofworkJobsAddress(network, c.env),
     explorer: network === "testnet" ? ARC_TESTNET_EXPLORER_URL : c.env.ARC_MAINNET_EXPLORER_URL,
   });
+});
+
+/**
+ * GitHub deliveries. Verified against the app's webhook secret, written down, then acted
+ * on; an unsigned request never reaches the database.
+ */
+app.post("/webhooks/github", async (c) => {
+  const outcome = await receiveGitHubWebhook(c.req.raw, {
+    secret: required(c.env, "GITHUB_WEBHOOK_SECRET"),
+    store: databaseWebhookStore(db(c.env), "github"),
+  });
+  return c.json(outcome.body, outcome.status);
 });
 
 app.notFound((c) => fail(c, 404, "not_found", `no route for ${c.req.method} ${c.req.path}`));

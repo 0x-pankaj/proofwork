@@ -28,10 +28,12 @@
         "@proofwork/chain": "workspace:*",
         "@proofwork/core": "workspace:*",
         "@proofwork/db": "workspace:*",
+        "@proofwork/github": "workspace:*",
         "hono": "^4.13.7",
       },
       "devDependencies": {
         "@cloudflare/workers-types": "^5.20260907.1",
+        "@octokit/webhooks-methods": "^6.0.0",
         "@proofwork/config": "workspace:*",
         "wrangler": "^4.0.0",
       },
