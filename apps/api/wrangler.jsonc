@@ -1,0 +1,15 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "proofwork-api",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-07",
+  // Needed by the Neon driver and the crypto used to verify webhook signatures.
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true },
+  "vars": {
+    "ARC_NETWORK": "testnet"
+  }
+  // Secrets are set with `wrangler secret put`, never committed:
+  //   DATABASE_URL, GITHUB_APP_ID, GITHUB_APP_PRIVATE_KEY, GITHUB_WEBHOOK_SECRET,
+  //   CIRCLE_API_KEY, CIRCLE_ENTITY_SECRET, CIRCLE_VERIFIER_WALLET_ID
+}

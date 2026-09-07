@@ -1,0 +1,24 @@
+{
+  "name": "@proofwork/api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc --noEmit",
+    "lint": "biome check .",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@proofwork/chain": "workspace:*",
+    "@proofwork/core": "workspace:*",
+    "@proofwork/db": "workspace:*",
+    "hono": "^4.13.7"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260907.1",
+    "@proofwork/config": "workspace:*",
+    "wrangler": "^4.0.0"
+  }
+}
