@@ -5,8 +5,13 @@ import { Amount, ExplorerLink, Panel, StatusPill } from "@/components/ui";
 import { ApiError, api } from "@/lib/api";
 import { shortAddress, timeAgo, usdc } from "@/lib/format";
 import type { BountyDetail } from "@/lib/types";
+import { reclaimQuote } from "./actions";
+import { ReclaimPanel } from "./reclaim-panel";
 
 export const dynamic = "force-dynamic";
+
+/** Statuses where money may still be held on chain and could come back. */
+const HOLDS_ESCROW: string[] = ["pending_accept", "open", "claimed", "submitted", "expired"];
 
 export default async function BountyPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -21,6 +26,10 @@ export default async function BountyPage({ params }: { params: Promise<{ id: str
 
   const maintainerShare = BigInt(bounty.split.maintainer);
   const settled = bounty.status === "settled";
+
+  // Only asked for while the escrow could still be sitting there, so a settled bounty does
+  // not pay for a round trip that can only ever answer "no".
+  const quote = HOLDS_ESCROW.includes(bounty.status) ? await reclaimQuote(id) : null;
 
   return (
     <>
@@ -72,6 +81,8 @@ export default async function BountyPage({ params }: { params: Promise<{ id: str
         </section>
 
         <aside className="space-y-6">
+          {quote?.reclaimable ? <ReclaimPanel bountyId={bounty.id} quote={quote} /> : null}
+
           <Panel className="p-5">
             <h2 className="text-sm font-medium tracking-wide text-ink-faint uppercase">
               Who gets paid
