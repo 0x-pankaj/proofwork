@@ -37,6 +37,11 @@ export async function userByGithubId(db: Database, githubId: bigint): Promise<Us
   return row;
 }
 
+export async function userById(db: Database, id: string): Promise<User | undefined> {
+  const [row] = await db.select().from(users).where(eq(users.id, id)).limit(1);
+  return row;
+}
+
 export async function userByLogin(db: Database, login: string): Promise<User | undefined> {
   const [row] = await db.select().from(users).where(eq(users.login, login)).limit(1);
   return row;

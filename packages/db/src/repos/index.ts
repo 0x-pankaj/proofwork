@@ -4,6 +4,7 @@ export * from "./claims";
 export * from "./installations";
 export * from "./payments";
 export * from "./repositories";
+export * from "./settlements";
 export * from "./submissions";
 export * from "./users";
 export * from "./webhookEvents";

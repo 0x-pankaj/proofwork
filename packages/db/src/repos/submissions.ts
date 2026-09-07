@@ -94,12 +94,18 @@ export async function markSubmissionClosed(db: Database, id: string): Promise<vo
   await db.update(submissions).set({ status: "closed" }).where(eq(submissions.id, id));
 }
 
-/** Marks a claim's outcome, and what happens to the stake behind it. */
+/**
+ * Marks a claim's outcome, and what happens to the stake behind it. Leaving `stakeStatus`
+ * out keeps the stake where it is, which is right when the claim simply did not win.
+ */
 export async function settleClaim(
   db: Database,
   claimId: string,
   status: "won" | "lost",
-  stakeStatus: "refunded" | "forwarded_to_maintainer" | "none",
+  stakeStatus?: "refunded" | "forwarded_to_maintainer" | "none",
 ): Promise<void> {
-  await db.update(claims).set({ status, stakeStatus }).where(eq(claims.id, claimId));
+  await db
+    .update(claims)
+    .set({ status, ...(stakeStatus ? { stakeStatus } : {}) })
+    .where(eq(claims.id, claimId));
 }

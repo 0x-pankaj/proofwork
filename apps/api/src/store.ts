@@ -10,25 +10,37 @@ import {
   type Claim,
   type ClaimInput,
   claimBounty,
+  claimById,
+  completeBounty,
   type Database,
   type Installation,
   type InstallationInput,
   installationByGithubId,
+  loseOtherClaims,
   type MergeInput,
   markInstallationReposUninstalled,
   markReposUninstalled,
+  markSettlementComplete,
+  markSettlementFailed,
+  markSettlementSubmitted,
   markSubmissionClosed,
   markSubmissionMerged,
   mergedSubmissionFor,
   moveBountyStatus,
+  openSettlement,
   openSubmissionsFor,
   type RepositoryInput,
   type RepoWithInstallation,
+  type ReputationInput,
+  recordReputationEvent,
   repoWithInstallationByGithubId,
   repoWithInstallationById,
+  type Settlement,
+  type SettlementInput,
   type Submission,
   type SubmissionInput,
   settleClaim,
+  settlementForBounty,
   stakeInUse,
   submissionForPr,
   syncRepos,
@@ -37,6 +49,7 @@ import {
   upsertInstallation,
   upsertSubmission,
   upsertUser,
+  userById,
   userByLogin,
   withdrawClaim,
   type X402Payment,
@@ -62,15 +75,19 @@ export interface Store {
 
   upsertUser(input: UserInput): Promise<User>;
   userByLogin(login: string): Promise<User | undefined>;
+  userById(id: string): Promise<User | undefined>;
   agentByGithubLogin(login: string): Promise<Agent | undefined>;
 
   activeBountyForIssue(repoId: string, issueNumber: number): Promise<Bounty | undefined>;
   bountyById(id: string): Promise<Bounty | undefined>;
   moveBountyStatus(id: string, from: Bounty["status"], to: Bounty["status"]): Promise<boolean>;
   acceptBounty(id: string): Promise<boolean>;
+  completeBounty(id: string, input: { txHash: string; circleTxId: string }): Promise<boolean>;
 
   activeClaimsFor(bountyId: string): Promise<Claim[]>;
   activeClaimBy(bountyId: string, githubLogin: string): Promise<Claim | undefined>;
+  claimById(id: string): Promise<Claim | undefined>;
+  loseOtherClaims(bountyId: string, winnerClaimId: string): Promise<void>;
   claimBounty(input: ClaimInput): Promise<Claim>;
   withdrawClaim(bountyId: string, githubLogin: string): Promise<boolean>;
 
@@ -83,8 +100,21 @@ export interface Store {
   settleClaim(
     claimId: string,
     status: "won" | "lost",
-    stakeStatus: "refunded" | "forwarded_to_maintainer" | "none",
+    stakeStatus?: "refunded" | "forwarded_to_maintainer" | "none",
   ): Promise<void>;
+
+  openSettlement(input: SettlementInput): Promise<Settlement>;
+  settlementForBounty(bountyId: string): Promise<Settlement | undefined>;
+  markSettlementSubmitted(bountyId: string, circleTxId: string): Promise<void>;
+  markSettlementComplete(
+    bountyId: string,
+    input: { txHash: string; circleTxId: string },
+  ): Promise<void>;
+  markSettlementFailed(
+    bountyId: string,
+    input: { error: string; circleTxId?: string },
+  ): Promise<void>;
+  recordReputationEvent(input: ReputationInput): Promise<void>;
 
   x402PaymentById(id: string): Promise<X402Payment | undefined>;
   stakeInUse(paymentId: string): Promise<boolean>;
@@ -105,15 +135,19 @@ export function databaseStore(db: Database): Store {
 
     upsertUser: (input) => upsertUser(db, input),
     userByLogin: (login) => userByLogin(db, login),
+    userById: (id) => userById(db, id),
     agentByGithubLogin: (login) => agentByGithubLogin(db, login),
 
     activeBountyForIssue: (repoId, issueNumber) => activeBountyForIssue(db, repoId, issueNumber),
     bountyById: (id) => bountyById(db, id),
     moveBountyStatus: (id, from, to) => moveBountyStatus(db, id, from, to),
     acceptBounty: (id) => acceptBounty(db, id),
+    completeBounty: (id, input) => completeBounty(db, id, input),
 
     activeClaimsFor: (bountyId) => activeClaimsFor(db, bountyId),
     activeClaimBy: (bountyId, login) => activeClaimBy(db, bountyId, login),
+    claimById: (id) => claimById(db, id),
+    loseOtherClaims: (bountyId, winnerClaimId) => loseOtherClaims(db, bountyId, winnerClaimId),
     claimBounty: (input) => claimBounty(db, input),
     withdrawClaim: (bountyId, login) => withdrawClaim(db, bountyId, login),
 
@@ -124,6 +158,14 @@ export function databaseStore(db: Database): Store {
     markSubmissionMerged: (id, input) => markSubmissionMerged(db, id, input),
     markSubmissionClosed: (id) => markSubmissionClosed(db, id),
     settleClaim: (claimId, status, stakeStatus) => settleClaim(db, claimId, status, stakeStatus),
+
+    openSettlement: (input) => openSettlement(db, input),
+    settlementForBounty: (bountyId) => settlementForBounty(db, bountyId),
+    markSettlementSubmitted: (bountyId, circleTxId) =>
+      markSettlementSubmitted(db, bountyId, circleTxId),
+    markSettlementComplete: (bountyId, input) => markSettlementComplete(db, bountyId, input),
+    markSettlementFailed: (bountyId, input) => markSettlementFailed(db, bountyId, input),
+    recordReputationEvent: (input) => recordReputationEvent(db, input),
 
     x402PaymentById: (id) => x402PaymentById(db, id),
     stakeInUse: (paymentId) => stakeInUse(db, paymentId),

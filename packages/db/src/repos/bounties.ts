@@ -52,6 +52,18 @@ export async function moveBountyStatus(
   return updated.length > 0;
 }
 
+/** Records the payout on the bounty itself, so the board and the UI can show it. */
+export async function completeBounty(
+  db: Database,
+  id: string,
+  input: { txHash: string; circleTxId: string },
+): Promise<boolean> {
+  return moveBountyStatus(db, id, "settling", "settled", {
+    settleTxHash: input.txHash,
+    circleTxId: input.circleTxId,
+  });
+}
+
 /**
  * A maintainer opening a bounty for work. Returns false when it was not waiting for one,
  * which is what makes a repeated `/accept` comment harmless.

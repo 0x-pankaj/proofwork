@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, ne } from "drizzle-orm";
 import type { Database } from "../client";
 import { type Claim, claims } from "../schema";
 
@@ -11,6 +11,11 @@ export interface ClaimInput {
   payoutAddress: string;
   stakePaymentId?: string | null;
   stakeStatus?: Claim["stakeStatus"];
+}
+
+export async function claimById(db: Database, id: string): Promise<Claim | undefined> {
+  const [row] = await db.select().from(claims).where(eq(claims.id, id)).limit(1);
+  return row;
 }
 
 export async function activeClaimsFor(db: Database, bountyId: string): Promise<Claim[]> {
@@ -90,4 +95,21 @@ export async function withdrawClaim(
     )
     .returning({ id: claims.id });
   return updated.length > 0;
+}
+
+/**
+ * Every other live claim on a bounty, once one of them has won. Their stakes are left
+ * where they are: nothing was reviewed, so nothing is owed to the maintainer.
+ */
+export async function loseOtherClaims(
+  db: Database,
+  bountyId: string,
+  winnerClaimId: string,
+): Promise<void> {
+  await db
+    .update(claims)
+    .set({ status: "lost" })
+    .where(
+      and(eq(claims.bountyId, bountyId), eq(claims.status, "active"), ne(claims.id, winnerClaimId)),
+    );
 }

@@ -7,7 +7,8 @@ import {
   pullRequestEventSchema,
 } from "@proofwork/github";
 import type { Env } from "../env";
-import { db, github } from "../services";
+import { circleCompliance, circleWallets, db, github } from "../services";
+import { settleBountyById } from "../settlement";
 import { databaseStore } from "../store";
 import type { GitHubEventHandler } from "./github";
 import { handleInstallation, handleInstallationRepositories } from "./handlers/installation";
@@ -45,7 +46,25 @@ export function githubDispatcher(env: Env): GitHubEventHandler {
         );
       case "pull_request":
         return handlePullRequest(
-          { store, github: github(env), env },
+          {
+            store,
+            github: github(env),
+            env,
+            // Built here rather than up front: a merge is the only event that needs the
+            // verifier wallet, and most deliveries are not merges.
+            settle: async (bountyId) => {
+              await settleBountyById(
+                {
+                  store,
+                  github: github(env),
+                  wallets: circleWallets(env),
+                  compliance: circleCompliance(env),
+                  env,
+                },
+                bountyId,
+              );
+            },
+          },
           parseEvent(event, pullRequestEventSchema, payload),
         );
       default:

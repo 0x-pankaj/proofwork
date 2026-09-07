@@ -5,6 +5,8 @@ import type {
   Installation,
   RepositoryInput,
   RepoWithInstallation,
+  ReputationInput,
+  Settlement,
   Submission,
   User,
   X402Payment,
@@ -23,6 +25,8 @@ export interface FakeStore extends Store {
   bounties: Map<string, Bounty>;
   claims: Claim[];
   submissions: Submission[];
+  settlements: Map<string, Settlement>;
+  reputation: ReputationInput[];
   payments: Map<string, X402Payment>;
   synced: Array<{ installationId: string; repositories: RepositoryInput[] }>;
   uninstalledRepoIds: bigint[];
@@ -36,6 +40,7 @@ export interface FakeStoreSeed {
   bounties?: Bounty[];
   claims?: Claim[];
   submissions?: Submission[];
+  settlements?: Settlement[];
   payments?: X402Payment[];
 }
 
@@ -195,6 +200,8 @@ export function createFakeStore(seed: FakeStoreSeed | RepoWithInstallation[] = {
     bounties: new Map((seeded.bounties ?? []).map((bounty) => [bounty.id, bounty])),
     claims: [...(seeded.claims ?? [])],
     submissions: [...(seeded.submissions ?? [])],
+    settlements: new Map((seeded.settlements ?? []).map((row) => [row.bountyId, row])),
+    reputation: [],
     payments: new Map((seeded.payments ?? []).map((payment) => [payment.id, payment])),
     synced: [],
     uninstalledRepoIds: [],
@@ -253,6 +260,10 @@ export function createFakeStore(seed: FakeStoreSeed | RepoWithInstallation[] = {
 
     async userByLogin(login) {
       return store.users.get(login);
+    },
+
+    async userById(id) {
+      return [...store.users.values()].find((user) => user.id === id);
     },
 
     async agentByGithubLogin(login) {
@@ -380,7 +391,99 @@ export function createFakeStore(seed: FakeStoreSeed | RepoWithInstallation[] = {
       const index = store.claims.findIndex((claim) => claim.id === claimId);
       const claim = store.claims[index];
       if (!claim) return;
-      store.claims[index] = { ...claim, status, stakeStatus };
+      store.claims[index] = { ...claim, status, ...(stakeStatus ? { stakeStatus } : {}) };
+    },
+
+    async loseOtherClaims(bountyId, winnerClaimId) {
+      store.claims = store.claims.map((claim) =>
+        claim.bountyId === bountyId && claim.status === "active" && claim.id !== winnerClaimId
+          ? { ...claim, status: "lost" }
+          : claim,
+      );
+    },
+
+    async claimById(id) {
+      return store.claims.find((claim) => claim.id === id);
+    },
+
+    async completeBounty(id, input) {
+      const bounty = store.bounties.get(id);
+      if (bounty?.status !== "settling") return false;
+      store.bounties.set(id, {
+        ...bounty,
+        status: "settled",
+        settleTxHash: input.txHash,
+        circleTxId: input.circleTxId,
+      });
+      return true;
+    },
+
+    async openSettlement(input) {
+      const settlement: Settlement = {
+        id: `settlement-${input.bountyId}`,
+        bountyId: input.bountyId,
+        claimId: input.claimId,
+        providerAddress: input.providerAddress,
+        amountUsdc: input.amountUsdc,
+        feeUsdc: input.feeUsdc,
+        screeningResult: input.screeningResult ?? null,
+        txHash: null,
+        circleTxId: null,
+        status: "pending",
+        error: null,
+        createdAt: new Date(),
+        completedAt: null,
+      };
+      store.settlements.set(input.bountyId, settlement);
+      return settlement;
+    },
+
+    async settlementForBounty(bountyId) {
+      return store.settlements.get(bountyId);
+    },
+
+    async markSettlementSubmitted(bountyId, circleTxId) {
+      const settlement = store.settlements.get(bountyId);
+      if (!settlement) return;
+      store.settlements.set(bountyId, { ...settlement, status: "submitted", circleTxId });
+    },
+
+    async markSettlementComplete(bountyId, input) {
+      const settlement = store.settlements.get(bountyId);
+      if (!settlement) return;
+      store.settlements.set(bountyId, {
+        ...settlement,
+        status: "complete",
+        txHash: input.txHash,
+        circleTxId: input.circleTxId,
+        completedAt: new Date(),
+        error: null,
+      });
+    },
+
+    async markSettlementFailed(bountyId, input) {
+      const settlement = store.settlements.get(bountyId);
+      store.settlements.set(bountyId, {
+        ...(settlement ?? {
+          id: `settlement-${bountyId}`,
+          bountyId,
+          claimId: "",
+          providerAddress: "",
+          amountUsdc: 0n,
+          feeUsdc: 0n,
+          screeningResult: null,
+          txHash: null,
+          createdAt: new Date(),
+          completedAt: null,
+        }),
+        status: "failed",
+        error: input.error,
+        circleTxId: input.circleTxId ?? settlement?.circleTxId ?? null,
+      });
+    },
+
+    async recordReputationEvent(input) {
+      store.reputation.push(input);
     },
 
     async x402PaymentById(id) {

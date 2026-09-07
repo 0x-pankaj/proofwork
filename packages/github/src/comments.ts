@@ -244,9 +244,10 @@ export interface SettledInput {
 
 /** The comment the whole product exists to post. */
 export function settledComment(input: SettledInput): RenderedComment {
+  const maintainer = input.maintainerLogin ? `@${input.maintainerLogin}` : "the maintainer";
   const reward =
-    input.maintainerUsdc > 0n && input.maintainerLogin
-      ? ` and ${formatUsdc(input.maintainerUsdc)} to @${input.maintainerLogin} for the review`
+    input.maintainerUsdc > 0n
+      ? ` and ${formatUsdc(input.maintainerUsdc)} to ${maintainer} for the review`
       : "";
   return render(input.bountyId, "settled", [
     `### 🎉 Paid ${formatUsdc(input.contributorUsdc)} to @${input.login}${reward}`,
