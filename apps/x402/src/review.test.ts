@@ -39,3 +39,19 @@ describe("parseVerdict", () => {
     expect(verdict.risks).toEqual([]);
   });
 });
+
+describe("parseVerdict on a truncated answer", () => {
+  /**
+   * Seen for real against the gateway with too small a token budget: the model starts a
+   * well-formed verdict and is cut off mid-string. Salvaging it would mean reporting risks
+   * the model never finished listing, so it stays a refusal.
+   */
+  it("refuses a verdict the model never finished writing", () => {
+    const verdict = parseVerdict(
+      '{"addressesIssue": true, "confidence": "low", "risks": ["No tests added", "No validation ',
+    );
+
+    expect(verdict.addressesIssue).toBe(false);
+    expect(verdict.summary).toContain("did not return a usable verdict");
+  });
+});

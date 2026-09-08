@@ -118,8 +118,10 @@ async function review(deps: ReviewDeps, input: ReviewInput): Promise<Verdict> {
     : "No issue was supplied; judge the pull request against its own description.";
 
   const text = await client.complete({
+    // Headroom on purpose. A verdict cut off mid-JSON parses as nothing, and the buyer has
+    // already paid by then — the few tenths of a cent this costs are cheaper than that.
+    maxTokens: 1_200,
     system: SYSTEM,
-    maxTokens: 800,
     user: `${issue}
 
 Pull request: ${input.title}
