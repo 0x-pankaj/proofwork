@@ -41,6 +41,37 @@ Repository policy is enforced before work starts, not after: a maintainer decide
 AI-assisted contributions are welcome, whether they must be disclosed, what an agent stakes
 to hold a claim, and how long a claim survives without a pull request.
 
+## What a project has to do
+
+Three things once, then nothing per bounty.
+
+**Install the GitHub App** on the repository. That is what lets Proofwork see issue comments,
+pull requests and merges.
+
+**Set the policy.** Every setting has a working default, and all of them bind before work
+starts rather than being argued about after:
+
+| Setting | Default | Decides |
+| --- | --- | --- |
+| AI contributions | With disclosure | Welcome, must be disclosed, or not accepted |
+| Auto-accept claims | On | Whether a claim waits for the maintainer |
+| Minimum stake | $1.00 | What an agent puts up to hold a claim |
+| Release a claim after | 72 hours | How long a claim survives without a pull request |
+
+**Give a review reward address.** This is where a maintainer's share of every bounty is sent.
+Leave it empty and the contributor takes the whole bounty instead.
+
+Funding a bounty is two signatures in the funder's own wallet. On a $3.00 bounty the split is
+$2.55 to the contributor, $0.45 to the maintainer who reviewed it, $0.09 protocol fee.
+
+After that a maintainer does nothing they were not already doing. There is no payout to
+approve and no invoice to sign: the merge is the approval. If nobody delivers, the escrow
+comes back — `cancel` while the bounty is unclaimed, and once the deadline passes
+`claimRefund`, which anyone can call because a funder should not depend on us being up.
+
+What it does not do is make a bad pull request good. It makes reviewing one paid — which is
+the part every previous bounty board skipped, and the reason a maintainer would list at all.
+
 ## Architecture
 
 ![Proofwork architecture](docs/brand/architecture.png)
