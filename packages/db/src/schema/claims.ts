@@ -51,6 +51,8 @@ export const claims = pgTable(
       onDelete: "set null",
     }),
     stakeStatus: stakeStatus().notNull().default("none"),
+    /** The transfer that returned or forwarded the stake. Null while it is still held. */
+    stakeTxHash: text(),
     createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [

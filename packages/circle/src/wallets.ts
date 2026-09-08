@@ -34,6 +34,14 @@ export interface CircleClient {
     fee: { type: "level"; config: { feeLevel: FeeLevel } };
     idempotencyKey?: string;
   }): Promise<{ data?: { id?: string } | null } | null>;
+  createTransferTransaction(input: {
+    walletId: string;
+    tokenAddress: string;
+    destinationAddress: string;
+    amounts: string[];
+    fee: { type: "level"; config: { feeLevel: FeeLevel } };
+    idempotencyKey?: string;
+  }): Promise<{ data?: { id?: string } | null } | null>;
   getTransaction(input: { id: string }): Promise<{
     data?: {
       transaction?: {
@@ -62,6 +70,17 @@ export interface ContractExecutionRequest {
    * A UUID Circle uses to collapse retries. Passing the bounty id makes a replayed
    * settlement a no-op at Circle's end as well as ours.
    */
+  idempotencyKey?: string;
+  feeLevel?: FeeLevel;
+}
+
+export interface TransferRequest {
+  walletId: string;
+  /** The USDC contract. On Arc that is the 6-decimal ERC-20 view, never the native one. */
+  tokenAddress: string;
+  destinationAddress: string;
+  /** 6-decimal integer amount, converted to the decimal string Circle expects. */
+  amountUsdc: bigint;
   idempotencyKey?: string;
   feeLevel?: FeeLevel;
 }
@@ -134,6 +153,31 @@ export class CircleWallets {
     return { id };
   }
 
+  /**
+   * Sends USDC out of a wallet we hold.
+   *
+   * Used to give a claim stake back. The escrow itself never goes through here — that is
+   * the contract's job — so this only ever moves money the treasury is already holding.
+   */
+  async transfer(request: TransferRequest): Promise<{ id: string }> {
+    if (request.amountUsdc <= 0n) {
+      throw new Error("a transfer needs a positive amount");
+    }
+
+    const response = await this.client.createTransferTransaction({
+      walletId: request.walletId,
+      tokenAddress: request.tokenAddress,
+      destinationAddress: request.destinationAddress,
+      amounts: [decimalUsdc(request.amountUsdc)],
+      fee: { type: "level", config: { feeLevel: request.feeLevel ?? "MEDIUM" } },
+      ...(request.idempotencyKey ? { idempotencyKey: request.idempotencyKey } : {}),
+    });
+
+    const id = response?.data?.id;
+    if (!id) throw new Error("Circle accepted the transfer but returned no id");
+    return { id };
+  }
+
   async getTransaction(id: string): Promise<CircleTransaction> {
     const response = await this.client.getTransaction({ id });
     const transaction = response?.data?.transaction;
@@ -181,6 +225,18 @@ export class CircleWallets {
 }
 
 /** Whether a finished transaction actually moved money. */
+/**
+ * A 6-decimal bigint as the decimal string Circle's API wants.
+ *
+ * Deliberately string arithmetic: 1_000_000n is $1.00, and routing that through a float
+ * to format it is how a payment loses a cent.
+ */
+export function decimalUsdc(amount: bigint): string {
+  const whole = amount / 1_000_000n;
+  const fraction = (amount % 1_000_000n).toString().padStart(6, "0").replace(/0+$/, "");
+  return fraction ? `${whole}.${fraction}` : `${whole}`;
+}
+
 export function succeeded(transaction: CircleTransaction): boolean {
   return (
     (transaction.state === "COMPLETE" || transaction.state === "CONFIRMED") &&

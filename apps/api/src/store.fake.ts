@@ -185,6 +185,7 @@ export function fakeClaim(overrides: Partial<Claim> = {}): Claim {
     status: "active",
     stakePaymentId: null,
     stakeStatus: "none",
+    stakeTxHash: null,
     createdAt: new Date("2026-09-07T00:00:00Z"),
     ...overrides,
   };
@@ -432,6 +433,15 @@ export function createFakeStore(seed: FakeStoreSeed | RepoWithInstallation[] = {
       if (!bounty) return false;
       if (["settled", "rejected", "expired", "cancelled"].includes(bounty.status)) return false;
       store.bounties.set(id, { ...bounty, status: to, ...extra });
+      return true;
+    },
+
+    async recordStakeResolution(claimId, outcome, txHash) {
+      const index = store.claims.findIndex((claim) => claim.id === claimId);
+      if (index === -1 || store.claims[index]?.stakeStatus !== "held") return false;
+      const claim = store.claims[index];
+      if (!claim) return false;
+      store.claims[index] = { ...claim, stakeStatus: outcome, stakeTxHash: txHash };
       return true;
     },
 

@@ -61,6 +61,7 @@ import {
   readChainCursor,
   recordBountyRefund,
   recordReputationEvent,
+  recordStakeResolution,
   reposForUser,
   repoWithInstallationByGithubId,
   repoWithInstallationById,
@@ -158,6 +159,11 @@ export interface Store {
   claimsFor(bountyId: string): Promise<Claim[]>;
   activeClaimBy(bountyId: string, githubLogin: string): Promise<Claim | undefined>;
   claimById(id: string): Promise<Claim | undefined>;
+  recordStakeResolution(
+    claimId: string,
+    outcome: "refunded" | "forwarded_to_maintainer",
+    txHash: string | null,
+  ): Promise<boolean>;
   loseOtherClaims(bountyId: string, winnerClaimId: string): Promise<void>;
   claimBounty(input: ClaimInput): Promise<Claim>;
   withdrawClaim(bountyId: string, githubLogin: string): Promise<boolean>;
@@ -239,6 +245,8 @@ export function databaseStore(db: Database): Store {
     confirmBountyFunded: (id, input) => confirmBountyFunded(db, id, input),
     moveBountyStatus: (id, from, to) => moveBountyStatus(db, id, from, to),
     recordBountyRefund: (id, refund) => recordBountyRefund(db, id, refund),
+    recordStakeResolution: (claimId, outcome, txHash) =>
+      recordStakeResolution(db, claimId, outcome, txHash),
     acceptBounty: (id) => acceptBounty(db, id),
     completeBounty: (id, input) => completeBounty(db, id, input),
 

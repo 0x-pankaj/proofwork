@@ -41,6 +41,9 @@ function circleClient(finalState = "CONFIRMED") {
   const create = vi.fn(async (_input: ExecutionInput) => ({ data: { id: "circle-tx-1" } }));
   const client: CircleClient = {
     createContractExecutionTransaction: create,
+    async createTransferTransaction() {
+      return { data: { id: "circle-transfer-1" } };
+    },
     async getTransaction() {
       return {
         data: {
@@ -114,7 +117,10 @@ describe("settleBountyById", () => {
       txHash: TX_HASH,
       circleTxId: "circle-tx-1",
     });
-    expect(context.store.claims[0]).toMatchObject({ status: "won", stakeStatus: "refunded" });
+    // `none` because this claim never staked. A stake only reads `refunded` once a transfer
+    // has actually returned it — the status used to be written either way, which made the
+    // column claim money had moved when nothing had.
+    expect(context.store.claims[0]).toMatchObject({ status: "won", stakeStatus: "none" });
 
     expect(context.posted[0]?.issueNumber).toBe(12);
     expect(context.posted[0]?.body).toContain("$170.00 USDC to @octocat");

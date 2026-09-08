@@ -13,6 +13,7 @@ import type { CircleClient, FeeLevel } from "./wallets";
 
 const CONTRACT_EXECUTION_PATH = "/v1/w3s/developer/transactions/contractExecution";
 const PUBLIC_KEY_PATH = "/v1/w3s/config/entity/publicKey";
+const TRANSFER_PATH = "/v1/w3s/developer/transactions/transfer";
 const TRANSACTION_PATH = "/v1/w3s/transactions";
 
 export interface CircleHttpConfig {
@@ -53,6 +54,24 @@ export class CircleHttpClient implements CircleClient {
       feeLevel: fee.config.feeLevel,
       idempotencyKey: input.idempotencyKey ?? crypto.randomUUID(),
       // A fresh ciphertext per request; Circle rejects a replayed one.
+      entitySecretCiphertext: await this.entitySecretCiphertext(),
+    });
+  }
+
+  async createTransferTransaction(input: {
+    walletId: string;
+    tokenAddress: string;
+    destinationAddress: string;
+    /** Decimal strings, as Circle wants them — not the 6-decimal integer. */
+    amounts: string[];
+    fee: { type: "level"; config: { feeLevel: FeeLevel } };
+    idempotencyKey?: string;
+  }): Promise<{ data?: { id?: string } | null } | null> {
+    const { fee, ...rest } = input;
+    return this.send<{ data?: { id?: string } | null }>("POST", TRANSFER_PATH, {
+      ...rest,
+      feeLevel: fee.config.feeLevel,
+      idempotencyKey: input.idempotencyKey ?? crypto.randomUUID(),
       entitySecretCiphertext: await this.entitySecretCiphertext(),
     });
   }

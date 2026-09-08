@@ -1,5 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
-import { type CircleClient, CircleTransactionError, CircleWallets, succeeded } from "./wallets";
+import {
+  type CircleClient,
+  CircleTransactionError,
+  CircleWallets,
+  decimalUsdc,
+  succeeded,
+} from "./wallets";
 
 const TX_HASH = "0xdeadbeef";
 
@@ -7,6 +13,9 @@ function client(states: string[], overrides: Partial<CircleClient> = {}): Circle
   const queue = [...states];
   return {
     async createContractExecutionTransaction() {
+      return { data: { id: "circle-tx-1" } };
+    },
+    async createTransferTransaction() {
       return { data: { id: "circle-tx-1" } };
     },
     async getTransaction() {
@@ -153,5 +162,52 @@ describe("calldata execution", () => {
     await expect(
       wallets(circle).executeContract({ walletId: "wallet-1", contractAddress: "0x36" }),
     ).rejects.toThrow(/function signature or calldata/);
+  });
+});
+
+describe("decimalUsdc", () => {
+  it.each([
+    [1_000_000n, "1"],
+    [3_090_000n, "3.09"],
+    [500n, "0.0005"],
+    [1n, "0.000001"],
+    [20_000_000n, "20"],
+    [2_550_000n, "2.55"],
+  ])("renders %s as %s", (amount, expected) => {
+    expect(decimalUsdc(amount)).toBe(expected);
+  });
+});
+
+describe("transfer", () => {
+  it("sends the 6-decimal amount as the decimal string Circle wants", async () => {
+    let sent: { amounts?: string[]; destinationAddress?: string } = {};
+    const circle = client(["COMPLETE"], {
+      async createTransferTransaction(input) {
+        sent = input;
+        return { data: { id: "circle-transfer-1" } };
+      },
+    });
+
+    const { id } = await wallets(circle).transfer({
+      walletId: "w-1",
+      tokenAddress: "0x3600000000000000000000000000000000000000",
+      destinationAddress: "0xabc",
+      amountUsdc: 1_000_000n,
+    });
+
+    expect(id).toBe("circle-transfer-1");
+    expect(sent.amounts).toEqual(["1"]);
+    expect(sent.destinationAddress).toBe("0xabc");
+  });
+
+  it("refuses to send nothing, which would burn a fee for no movement", async () => {
+    await expect(
+      wallets(client(["COMPLETE"])).transfer({
+        walletId: "w-1",
+        tokenAddress: "0x36",
+        destinationAddress: "0xabc",
+        amountUsdc: 0n,
+      }),
+    ).rejects.toThrow(/positive amount/);
   });
 });

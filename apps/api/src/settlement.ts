@@ -17,6 +17,7 @@ import {
 import type { Bounty, Claim, RepoWithInstallation, Submission } from "@proofwork/db";
 import { settledComment, settlementFailedComment } from "@proofwork/github";
 import { type Env, required } from "./env";
+import { resolveStakes } from "./stakes";
 import type { Store } from "./store";
 import { agentMetadataUrl } from "./urls";
 import type { CommentWriter } from "./webhooks/handlers/issues";
@@ -161,9 +162,17 @@ export async function settleBountyById(
       if (!loaded) return;
       await store.markSettlementComplete(bountyId, { txHash, circleTxId });
       await store.completeBounty(bountyId, { txHash, circleTxId });
-      await store.settleClaim(loaded.claim.id, "won", "refunded");
+      await store.settleClaim(loaded.claim.id, "won");
       await store.loseOtherClaims(bountyId, loaded.claim.id);
       console.log("settled", { bountyId, jobId: String(loaded.bounty.jobId), txHash });
+
+      // After the escrow, never before: a stake is the agent's own money and returning it
+      // must not be able to hold up, or undo, the payment for the work.
+      await resolveStakes(
+        { store, wallets: deps.wallets, env },
+        bountyId,
+        loaded.found.repo.maintainerPayoutAddress,
+      );
     },
 
     async recordFailure({ error, circleTxId }) {

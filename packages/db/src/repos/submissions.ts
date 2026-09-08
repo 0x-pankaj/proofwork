@@ -94,6 +94,21 @@ export async function markSubmissionClosed(db: Database, id: string): Promise<vo
   await db.update(submissions).set({ status: "closed" }).where(eq(submissions.id, id));
 }
 
+/** Records a stake that actually moved, with the transfer that moved it. */
+export async function recordStakeResolution(
+  db: Database,
+  claimId: string,
+  outcome: "refunded" | "forwarded_to_maintainer",
+  txHash: string | null,
+): Promise<boolean> {
+  const updated = await db
+    .update(claims)
+    .set({ stakeStatus: outcome, ...(txHash ? { stakeTxHash: txHash } : {}) })
+    .where(and(eq(claims.id, claimId), eq(claims.stakeStatus, "held")))
+    .returning({ id: claims.id });
+  return updated.length > 0;
+}
+
 /**
  * Marks a claim's outcome, and what happens to the stake behind it. Leaving `stakeStatus`
  * out keeps the stake where it is, which is right when the claim simply did not win.

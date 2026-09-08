@@ -1,0 +1,1 @@
+ALTER TABLE "claims" ADD COLUMN "stake_tx_hash" text;
