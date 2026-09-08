@@ -64,9 +64,19 @@ export function modelStyle(env: Env): ModelStyle {
   return /(^|\.)anthropic\.com$/.test(hostOf(modelBaseUrl(env))) ? "anthropic" : "openai";
 }
 
-/** Whether a call could even be attempted. Checked before anyone is charged for one. */
+/**
+ * Whether a call could even be attempted. Checked before anyone is charged for one.
+ *
+ * A key on its own is not enough. With no base URL the request goes to Anthropic, and a key
+ * that is not an Anthropic key will be refused there — so that pairing is a misconfigured
+ * deployment, not a working one, and saying so up front is cheaper than saying it after
+ * taking the money.
+ */
 export function modelConfigured(env: Env): boolean {
-  return modelKey(env) !== "";
+  const key = modelKey(env);
+  if (key === "") return false;
+  const routed = Boolean(env.MODEL_BASE_URL || env.ANTHROPIC_BASE_URL);
+  return routed || key.startsWith("sk-ant-");
 }
 
 function hostOf(base: string): string {

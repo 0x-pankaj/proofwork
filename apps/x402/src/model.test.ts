@@ -73,8 +73,12 @@ describe("modelConfigured", () => {
     expect(modelConfigured(env({ MODEL_API_KEY: "" }))).toBe(false);
   });
 
-  it("accepts the older ANTHROPIC_API_KEY", () => {
-    expect(modelConfigured({ ANTHROPIC_API_KEY: "k" } as Env)).toBe(true);
+  it("accepts the older ANTHROPIC_API_KEY when it is routed somewhere", () => {
+    const configured = modelConfigured({
+      ANTHROPIC_API_KEY: "k",
+      ANTHROPIC_BASE_URL: "https://gateway.example/v1",
+    } as Env);
+    expect(configured).toBe(true);
   });
 });
 
@@ -139,5 +143,23 @@ describe("model.complete", () => {
         maxTokens: 10,
       }),
     ).rejects.toThrow(/no completion/);
+  });
+});
+
+describe("modelConfigured, on a half-configured deployment", () => {
+  it("refuses an unrouted key that Anthropic would reject anyway", () => {
+    expect(modelConfigured({ MODEL_API_KEY: "rsk_gateway_key" } as Env)).toBe(false);
+  });
+
+  it("accepts the same key once it is pointed at its gateway", () => {
+    const configured = modelConfigured({
+      MODEL_API_KEY: "rsk_gateway_key",
+      MODEL_BASE_URL: "https://api.aifiesta.ai/v1",
+    } as Env);
+    expect(configured).toBe(true);
+  });
+
+  it("accepts a real Anthropic key with no base URL", () => {
+    expect(modelConfigured({ MODEL_API_KEY: "sk-ant-abc" } as Env)).toBe(true);
   });
 });
