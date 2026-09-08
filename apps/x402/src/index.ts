@@ -6,6 +6,7 @@ import { logger } from "hono/logger";
 import { type Env, required } from "./env";
 import { FIT_PRICE_USDC, fit } from "./fit";
 import { collect, gateway } from "./gateway";
+import { modelConfigured } from "./model";
 import { openapiDocument } from "./openapi";
 import { recordPayment } from "./payments";
 import { price } from "./price";
@@ -59,6 +60,20 @@ app.get("/v1/bounties/fit", async (c) => {
 
 /** A pre-review of a pull request against the issue it claims to close. */
 app.post("/v1/review", async (c) => {
+  // Checked before the 402, not after it: charging for a verdict we already know we cannot
+  // produce would be taking money for nothing.
+  if (!modelConfigured(c.env)) {
+    return c.json(
+      {
+        error: {
+          code: "model_unavailable",
+          message: "the reviewing model is not configured on this deployment",
+        },
+      },
+      503,
+    );
+  }
+
   const body = await c.req.json().catch(() => undefined);
   const db = database(c.env);
   const paid = await collect(gateway(c.env).require(price(REVIEW_PRICE_USDC)), c, body);

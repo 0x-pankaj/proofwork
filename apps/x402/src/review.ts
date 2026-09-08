@@ -1,7 +1,7 @@
-import Anthropic from "@anthropic-ai/sdk";
 import type { GitHubClient, RepoRef } from "@proofwork/github";
 import { z } from "zod";
 import type { Env } from "./env";
+import { type Model, ModelError, model as modelFor, modelName } from "./model";
 import { failure, ok, type Result } from "./result";
 
 /**
@@ -19,7 +19,6 @@ export const REVIEW_PRICE_USDC = 50_000n;
 
 /** Enough diff for a verdict without paying to think about a vendored lockfile. */
 const MAX_DIFF_CHARS = 60_000;
-const MODEL = "claude-sonnet-5";
 
 export const reviewSchema = z.object({
   repo: z.string().regex(/^[\w.-]+\/[\w.-]+$/),
@@ -40,7 +39,7 @@ export interface ReviewDeps {
   github: GitHubClient;
   /** Resolves the installation that lets us read a private repository's diff. */
   installationFor(repoFullName: string): Promise<RepoRef | undefined>;
-  anthropic?: Pick<Anthropic["messages"], "create">;
+  model?: Model;
 }
 
 export async function pullRequestReview(deps: ReviewDeps, payload: unknown): Promise<Result> {
@@ -65,16 +64,32 @@ export async function pullRequestReview(deps: ReviewDeps, payload: unknown): Pro
     issueNumber ? deps.github.getIssue(ref, issueNumber) : Promise.resolve(undefined),
   ]);
 
-  const verdict = await review(deps, {
-    title: pull.title,
-    body: pull.body ?? "",
-    diff: diff.slice(0, MAX_DIFF_CHARS),
-    truncated: diff.length > MAX_DIFF_CHARS,
-    ...(issue?.title ? { issueTitle: issue.title } : {}),
-    ...(issue?.body ? { issueBody: issue.body } : {}),
-  });
+  let verdict: Verdict;
+  try {
+    verdict = await review(deps, {
+      title: pull.title,
+      body: pull.body ?? "",
+      diff: diff.slice(0, MAX_DIFF_CHARS),
+      truncated: diff.length > MAX_DIFF_CHARS,
+      ...(issue?.title ? { issueTitle: issue.title } : {}),
+      ...(issue?.body ? { issueBody: issue.body } : {}),
+    });
+  } catch (cause) {
+    // The buyer has already paid by the time we get here, so they are owed a reason rather
+    // than a stack trace. `modelConfigured` keeps the common case from reaching this at all.
+    if (cause instanceof ModelError) {
+      return failure(cause.status, "model_unavailable", cause.message);
+    }
+    throw cause;
+  }
 
-  return ok({ repo, prNumber, issueNumber: issueNumber ?? null, model: MODEL, ...verdict });
+  return ok({
+    repo,
+    prNumber,
+    issueNumber: issueNumber ?? null,
+    model: modelName(deps.env),
+    ...verdict,
+  });
 }
 
 interface ReviewInput {
@@ -96,39 +111,23 @@ Reply as JSON only:
 "summary" is at most two sentences. "risks" is at most four entries and may be empty.`;
 
 async function review(deps: ReviewDeps, input: ReviewInput): Promise<Verdict> {
-  const client =
-    deps.anthropic ??
-    new Anthropic({
-      apiKey: deps.env.ANTHROPIC_API_KEY ?? "",
-      ...(deps.env.ANTHROPIC_BASE_URL ? { baseURL: deps.env.ANTHROPIC_BASE_URL } : {}),
-    }).messages;
+  const client = deps.model ?? modelFor(deps.env);
 
   const issue = input.issueTitle
     ? `Issue: ${input.issueTitle}\n${(input.issueBody ?? "").slice(0, 4_000)}`
     : "No issue was supplied; judge the pull request against its own description.";
 
-  const message = await client.create({
-    model: MODEL,
-    max_tokens: 800,
+  const text = await client.complete({
     system: SYSTEM,
-    messages: [
-      {
-        role: "user",
-        content: `${issue}
+    maxTokens: 800,
+    user: `${issue}
 
 Pull request: ${input.title}
 ${input.body.slice(0, 4_000)}
 
 Diff${input.truncated ? " (truncated)" : ""}:
 ${input.diff}`,
-      },
-    ],
   });
-
-  const text = message.content
-    .map((block) => (block.type === "text" ? block.text : ""))
-    .join("")
-    .trim();
 
   return parseVerdict(text);
 }

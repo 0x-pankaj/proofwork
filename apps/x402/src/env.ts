@@ -18,8 +18,16 @@ export interface Env extends ChainEnv {
   GITHUB_APP_ID?: string;
   GITHUB_APP_PRIVATE_KEY?: string;
 
+  /**
+   * The reviewing model. `MODEL_*` is the name to use; the `ANTHROPIC_*` pair is still read
+   * so an existing environment keeps working.
+   */
+  MODEL_API_KEY?: string;
+  MODEL_BASE_URL?: string;
+  /** Which wire format the endpoint speaks. Inferred from the host when unset. */
+  MODEL_API_STYLE?: "anthropic" | "openai";
+  MODEL_NAME?: string;
   ANTHROPIC_API_KEY?: string;
-  /** Set when Claude is reached through a gateway rather than api.anthropic.com. */
   ANTHROPIC_BASE_URL?: string;
 
   /** This service's own public origin, published in the OpenAPI document. */
