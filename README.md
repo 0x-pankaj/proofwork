@@ -79,7 +79,8 @@ the part every previous bounty board skipped, and the reason a maintainer would 
 The funder's wallet and the verifier wallet are the only two things that ever write to the
 chain; everything else reads. [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) has the
 settlement sequence, the bounty state machine, the trust boundaries and what happens when
-each part fails.
+each part fails, and [`docs/HOW_IT_WORKS.md`](docs/HOW_IT_WORKS.md) covers the product in
+depth — roles, policy, the money, how stakes resolve, and what is and is not exercised yet.
 
 ## Circle products used
 
