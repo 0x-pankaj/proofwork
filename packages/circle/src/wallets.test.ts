@@ -180,7 +180,7 @@ describe("decimalUsdc", () => {
 
 describe("transfer", () => {
   it("sends the 6-decimal amount as the decimal string Circle wants", async () => {
-    let sent: { amounts?: string[]; destinationAddress?: string } = {};
+    let sent: { amounts?: string[]; destinationAddress?: string; blockchain?: string } = {};
     const circle = client(["COMPLETE"], {
       async createTransferTransaction(input) {
         sent = input;
@@ -190,6 +190,7 @@ describe("transfer", () => {
 
     const { id } = await wallets(circle).transfer({
       walletId: "w-1",
+      blockchain: "ARC-TESTNET",
       tokenAddress: "0x3600000000000000000000000000000000000000",
       destinationAddress: "0xabc",
       amountUsdc: 1_000_000n,
@@ -198,12 +199,15 @@ describe("transfer", () => {
     expect(id).toBe("circle-transfer-1");
     expect(sent.amounts).toEqual(["1"]);
     expect(sent.destinationAddress).toBe("0xabc");
+    // Without this Circle answers 400: a token address means nothing without its chain.
+    expect(sent.blockchain).toBe("ARC-TESTNET");
   });
 
   it("refuses to send nothing, which would burn a fee for no movement", async () => {
     await expect(
       wallets(client(["COMPLETE"])).transfer({
         walletId: "w-1",
+        blockchain: "ARC-TESTNET",
         tokenAddress: "0x36",
         destinationAddress: "0xabc",
         amountUsdc: 0n,

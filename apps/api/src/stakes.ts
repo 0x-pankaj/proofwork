@@ -1,4 +1,4 @@
-import { activeNetwork, usdcAddress } from "@proofwork/chain";
+import { activeNetwork, circleBlockchainFor, usdcAddress } from "@proofwork/chain";
 import { type CircleWallets, succeeded } from "@proofwork/circle";
 import type { Claim } from "@proofwork/db";
 import { type Env, required } from "./env";
@@ -105,9 +105,11 @@ async function send(
   deps: StakeDeps,
   input: { destination: string; amountUsdc: bigint; idempotencyKey: string },
 ): Promise<string | null> {
+  const network = activeNetwork(deps.env);
   const { id } = await deps.wallets.transfer({
     walletId: required(deps.env, "CIRCLE_TREASURY_WALLET_ID"),
-    tokenAddress: usdcAddress(activeNetwork(deps.env), deps.env),
+    blockchain: circleBlockchainFor(network, deps.env),
+    tokenAddress: usdcAddress(network, deps.env),
     destinationAddress: input.destination,
     amountUsdc: input.amountUsdc,
     idempotencyKey: input.idempotencyKey,

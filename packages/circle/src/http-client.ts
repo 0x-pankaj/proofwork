@@ -78,6 +78,8 @@ export class CircleHttpClient implements CircleClient {
 
   async createTransferTransaction(input: {
     walletId: string;
+    /** Circle rejects a token address without the chain it lives on. */
+    blockchain: string;
     tokenAddress: string;
     destinationAddress: string;
     /** Decimal strings, as Circle wants them — not the 6-decimal integer. */

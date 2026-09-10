@@ -36,6 +36,7 @@ export interface CircleClient {
   }): Promise<{ data?: { id?: string } | null } | null>;
   createTransferTransaction(input: {
     walletId: string;
+    blockchain: string;
     tokenAddress: string;
     destinationAddress: string;
     amounts: string[];
@@ -76,6 +77,8 @@ export interface ContractExecutionRequest {
 
 export interface TransferRequest {
   walletId: string;
+  /** Circle's chain name, e.g. `ARC-TESTNET`; required alongside a token address. */
+  blockchain: string;
   /** The USDC contract. On Arc that is the 6-decimal ERC-20 view, never the native one. */
   tokenAddress: string;
   destinationAddress: string;
@@ -168,6 +171,7 @@ export class CircleWallets {
 
     const response = await this.client.createTransferTransaction({
       walletId: request.walletId,
+      blockchain: request.blockchain,
       tokenAddress: request.tokenAddress,
       destinationAddress: request.destinationAddress,
       amounts: [decimalUsdc(request.amountUsdc)],
