@@ -1,3 +1,4 @@
+import { activeNetwork, chainIdFor, deploymentFor } from "@proofwork/chain";
 import Link from "next/link";
 import { currentUser } from "@/auth";
 import { EmptyState, PageHeading } from "@/components/ui";
@@ -7,8 +8,6 @@ import type { RepoSummary } from "@/lib/types";
 import { FundForm } from "./fund-form";
 
 export const dynamic = "force-dynamic";
-
-const INSTALL_URL = "https://github.com/apps/proofwork-arc/installations/new";
 
 export default async function NewBountyPage() {
   const user = await currentUser();
@@ -28,6 +27,9 @@ export default async function NewBountyPage() {
   }
 
   const { repos } = await api<{ repos: RepoSummary[] }>("/v1/repos", { actingUserId: user.id });
+  // The preview uses the fee the contract was deployed with; the draft the API returns
+  // is priced from the chain and is what the wallet actually signs.
+  const feeBps = deploymentFor(chainIdFor(activeNetwork()))?.feeBps ?? 300;
 
   return (
     <>
@@ -39,7 +41,7 @@ export default async function NewBountyPage() {
       {repos.length === 0 ? (
         <EmptyState title="Proofwork is not installed on any of your repositories yet.">
           <p>
-            <Link href={INSTALL_URL} className="text-accent-ink underline">
+            <Link href="/install" className="text-accent-ink underline">
               Install the GitHub App
             </Link>{" "}
             on a repository, then come back.
@@ -47,7 +49,7 @@ export default async function NewBountyPage() {
         </EmptyState>
       ) : (
         <WalletProvider>
-          <FundForm repos={repos} />
+          <FundForm repos={repos} feeBps={feeBps} />
         </WalletProvider>
       )}
     </>

@@ -1,6 +1,6 @@
 "use client";
 
-import { arcTestnet, toUsdc } from "@proofwork/chain";
+import { arcTestnet, bpsOf, toUsdc } from "@proofwork/chain";
 import { useRouter } from "next/navigation";
 import { type ReactNode, useEffect, useState, useTransition } from "react";
 import { useAccount, useConfig, useConnect, useSendTransaction, useSwitchChain } from "wagmi";
@@ -34,7 +34,7 @@ const STAGE_LABEL: Record<Stage, string> = {
   done: "Funded.",
 };
 
-export function FundForm({ repos }: { repos: RepoSummary[] }) {
+export function FundForm({ repos, feeBps }: { repos: RepoSummary[]; feeBps: number }) {
   const router = useRouter();
   const config = useConfig();
   const { address, isConnected, chainId } = useAccount();
@@ -108,7 +108,8 @@ export function FundForm({ repos }: { repos: RepoSummary[] }) {
     }
   }
 
-  const total = amountUsdc ? amountUsdc + (amountUsdc * 300n) / 10_000n : 0n;
+  const fee = amountUsdc ? bpsOf(amountUsdc, feeBps) : 0n;
+  const total = amountUsdc ? amountUsdc + fee : 0n;
 
   return (
     <div className="grid gap-8 lg:grid-cols-[1.3fr_1fr]">
@@ -214,10 +215,7 @@ export function FundForm({ repos }: { repos: RepoSummary[] }) {
         </h2>
         <dl className="mt-4 space-y-3 text-sm">
           <Line label="Bounty" value={usdc(amountUsdc ?? 0n)} />
-          <Line
-            label="Protocol fee (3%)"
-            value={usdc(amountUsdc ? (amountUsdc * 300n) / 10_000n : 0n)}
-          />
+          <Line label={`Protocol fee (${feeBps / 100}%)`} value={usdc(fee)} />
           <div className="border-rule border-t pt-3">
             <Line label="You send" value={usdc(total)} strong />
           </div>

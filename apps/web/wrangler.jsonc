@@ -11,7 +11,8 @@
   "vars": {
     "ARC_NETWORK": "testnet",
     "PUBLIC_API_URL": "https://proofwork-api.0xpankaj.workers.dev",
-    "PUBLIC_X402_URL": "https://proofwork-x402.0xpankaj.workers.dev"
+    "PUBLIC_X402_URL": "https://proofwork-x402.0xpankaj.workers.dev",
+    "GITHUB_APP_SLUG": "proofwork-arc"
   }
   // Secrets are set with `wrangler secret put`, never committed:
   //   AUTH_SECRET, AUTH_GITHUB_ID, AUTH_GITHUB_SECRET, INTERNAL_API_KEY
