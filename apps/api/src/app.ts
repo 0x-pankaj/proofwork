@@ -79,6 +79,18 @@ function originOf(url: string | undefined): string | undefined {
  * Liveness. Deliberately does no I/O, so it stays honest about the Worker itself; the
  * chain and contract it names come from configuration, not from asking anyone.
  */
+/** Where to look, for anyone who opens the API's address in a browser. */
+app.get("/", (c) =>
+  c.json({
+    service: "proofwork-api",
+    docs: "https://github.com/0x-pankaj/proofwork",
+    health: "/health",
+    config: "/v1/config",
+    bounties: "/v1/bounties",
+    board: "/v1/board/arc-integration",
+  }),
+);
+
 app.get("/health", (c) => {
   let chain: { network: string; chainId: number | null; contract: string | null };
   try {

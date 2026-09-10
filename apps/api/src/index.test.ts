@@ -8,6 +8,18 @@ const env = {
   PROOFWORK_JOBS_ADDRESS_TESTNET: "",
 } as unknown as Env;
 
+describe("root", () => {
+  it("points a browser at the useful routes", async () => {
+    const res = await app.request("/", {}, env);
+    expect(res.status).toBe(200);
+    await expect(res.json()).resolves.toMatchObject({
+      service: "proofwork-api",
+      health: "/health",
+      bounties: "/v1/bounties",
+    });
+  });
+});
+
 describe("health", () => {
   it("answers without touching the database or the chain", async () => {
     const res = await app.request("/health", {}, env);
