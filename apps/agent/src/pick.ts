@@ -22,8 +22,8 @@ export interface BountySource {
   fit?: (bountyId: string) => Promise<FitVerdict>;
 }
 
-/** Below this the fit endpoint is telling the agent not to bother. */
-export const FIT_THRESHOLD = 50;
+/** Below this the fit endpoint is telling the agent not to bother. Scores run 0 to 1. */
+export const FIT_THRESHOLD = 0.5;
 /** How many of the richest bounties are worth paying to ask about. */
 export const CANDIDATES = 5;
 /** Two agents on one issue is competition; a third is a waste of everyone's review time. */
@@ -71,9 +71,9 @@ async function worthIt(
     return false;
   }
   if (verdict.score < FIT_THRESHOLD) {
-    log(`skipping ${label}: fit ${verdict.score}/100 — ${verdict.reasons.join("; ")}`);
+    log(`skipping ${label}: fit ${verdict.score.toFixed(2)} — ${verdict.reasons.join("; ")}`);
     return false;
   }
-  log(`${label}: fit ${verdict.score}/100 — ${verdict.reasons.join("; ")}`);
+  log(`${label}: fit ${verdict.score.toFixed(2)} — ${verdict.reasons.join("; ")}`);
   return true;
 }

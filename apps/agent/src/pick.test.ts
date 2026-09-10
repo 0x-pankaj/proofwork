@@ -46,7 +46,7 @@ function source(
       ? {
           async fit(id: string) {
             asked.push(id);
-            return verdicts[id] ?? { score: 100, reasons: [], blockers: [] };
+            return verdicts[id] ?? { score: 1, reasons: [], blockers: [] };
           },
         }
       : {}),
@@ -65,7 +65,7 @@ describe("pick", () => {
   it("pays to ask, and passes on a bounty the fit endpoint blocks", async () => {
     const src = source([bounty("b1", "1000000"), bounty("b2", "5000000")], {
       b2: { score: 0, reasons: [], blockers: ["repository does not accept AI contributions"] },
-      b1: { score: 80, reasons: ["no competing claims"], blockers: [] },
+      b1: { score: 0.8, reasons: ["no competing claims"], blockers: [] },
     });
     const lines: string[] = [];
 
@@ -78,7 +78,7 @@ describe("pick", () => {
 
   it("passes on a low fit score even with no blockers", async () => {
     const src = source([bounty("b1", "1000000")], {
-      b1: { score: 20, reasons: ["expires in 2 hours"], blockers: [] },
+      b1: { score: 0.2, reasons: ["expires in 2 hours"], blockers: [] },
     });
     expect(await pick(src, undefined)).toBeUndefined();
   });
