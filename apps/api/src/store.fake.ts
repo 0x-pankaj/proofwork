@@ -480,16 +480,24 @@ export function createFakeStore(seed: FakeStoreSeed | RepoWithInstallation[] = {
       return stale;
     },
 
+    async claimsWithHeldStakes() {
+      const held = [];
+      for (const claim of store.claims) {
+        if (claim.stakeStatus !== "held") continue;
+        if (!["won", "lost", "expired", "withdrawn"].includes(claim.status)) continue;
+        const bounty = store.bounties.get(claim.bountyId);
+        const found = bounty ? await store.repoById(bounty.repoId) : undefined;
+        if (bounty && found) held.push({ claim, bounty, repo: found.repo });
+      }
+      return held;
+    },
+
     async expireClaims(ids) {
       let expired = 0;
       store.claims = store.claims.map((claim) => {
         if (!ids.includes(claim.id) || claim.status !== "active") return claim;
         expired += 1;
-        return {
-          ...claim,
-          status: "expired" as const,
-          stakeStatus: "forwarded_to_maintainer" as const,
-        };
+        return { ...claim, status: "expired" as const };
       });
       return expired;
     },

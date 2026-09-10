@@ -139,15 +139,40 @@ export async function activeClaimsWithPolicy(db: Database): Promise<StaleClaim[]
     .where(and(eq(claims.status, "active"), inArray(bounties.status, ["open", "claimed"])));
 }
 
-/** Releases claims that were held without a pull request; their stakes pay the maintainer. */
+/**
+ * Releases claims that were held without a pull request. Their stakes stay `held` until
+ * the daily sweep actually moves the money to the maintainer: the column records what has
+ * happened, never what is owed.
+ */
 export async function expireClaims(db: Database, ids: string[]): Promise<number> {
   if (ids.length === 0) return 0;
   const updated = await db
     .update(claims)
-    .set({ status: "expired", stakeStatus: "forwarded_to_maintainer" })
+    .set({ status: "expired" })
     .where(and(inArray(claims.id, ids), eq(claims.status, "active")))
     .returning({ id: claims.id });
   return updated.length;
+}
+
+export interface HeldStake {
+  claim: Claim;
+  bounty: Bounty;
+  repo: Repo;
+}
+
+/** Stakes still sitting in the treasury after the claim they backed is over. */
+export async function claimsWithHeldStakes(db: Database): Promise<HeldStake[]> {
+  return db
+    .select({ claim: claims, bounty: bounties, repo: repos })
+    .from(claims)
+    .innerJoin(bounties, eq(claims.bountyId, bounties.id))
+    .innerJoin(repos, eq(bounties.repoId, repos.id))
+    .where(
+      and(
+        eq(claims.stakeStatus, "held"),
+        inArray(claims.status, ["won", "lost", "expired", "withdrawn"]),
+      ),
+    );
 }
 
 export interface ClaimListing {

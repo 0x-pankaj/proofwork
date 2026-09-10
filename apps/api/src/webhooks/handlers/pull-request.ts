@@ -133,7 +133,10 @@ async function link(
   );
 }
 
-/** Closed without merging: the claim is lost and the stake pays for the review it cost. */
+/**
+ * Closed without merging: the claim is lost. Its stake stays held until the daily sweep
+ * returns it — losing is not abuse, and the money only changes hands when it actually moves.
+ */
 async function abandoned(
   deps: PullRequestDeps,
   event: PullRequestEvent,
@@ -147,7 +150,7 @@ async function abandoned(
   if (submission?.status !== "open") return;
 
   await deps.store.markSubmissionClosed(submission.id);
-  await deps.store.settleClaim(submission.claimId, "lost", "forwarded_to_maintainer");
+  await deps.store.settleClaim(submission.claimId, "lost");
 
   const stillOpen = await deps.store.openSubmissionsFor(bounty.id);
   if (stillOpen.length > 0 || bounty.status !== "submitted") return;

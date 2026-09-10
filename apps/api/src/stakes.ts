@@ -60,6 +60,8 @@ export async function resolveStakes(
 
   for (const claim of await deps.store.claimsFor(bountyId)) {
     if (claim.stakeStatus !== "held" || !claim.stakePaymentId) continue;
+    // A live claim is still being paid for; only a finished one has a stake to give back.
+    if (claim.status === "active") continue;
 
     const payment = await deps.store.x402PaymentById(claim.stakePaymentId);
     if (!payment) continue;

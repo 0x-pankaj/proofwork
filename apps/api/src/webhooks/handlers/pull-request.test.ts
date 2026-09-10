@@ -133,7 +133,7 @@ describe("a pull request closed without merging", () => {
     expect(store.submissions[0]?.status).toBe("closed");
     expect(store.claims[0]).toMatchObject({
       status: "lost",
-      stakeStatus: "forwarded_to_maintainer",
+      stakeStatus: "held",
     });
     expect(store.bounties.get("bounty-1")?.status).toBe("open");
   });

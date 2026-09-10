@@ -25,6 +25,7 @@ import {
   claimById,
   claimsFor,
   claimsForUser,
+  claimsWithHeldStakes,
   completeBounty,
   confirmBountyFunded,
   createAgent,
@@ -33,6 +34,7 @@ import {
   expireBounties,
   expireClaims,
   forceBountyStatus,
+  type HeldStake,
   type Installation,
   type InstallationInput,
   installationByGithubId,
@@ -195,6 +197,7 @@ export interface Store {
 
   activeClaimsWithPolicy(): Promise<StaleClaim[]>;
   expireClaims(ids: string[]): Promise<number>;
+  claimsWithHeldStakes(): Promise<HeldStake[]>;
 
   readChainCursor(chainId: number): Promise<bigint | undefined>;
   writeChainCursor(chainId: number, lastBlock: bigint): Promise<void>;
@@ -276,6 +279,7 @@ export function databaseStore(db: Database): Store {
 
     activeClaimsWithPolicy: () => activeClaimsWithPolicy(db),
     expireClaims: (ids) => expireClaims(db, ids),
+    claimsWithHeldStakes: () => claimsWithHeldStakes(db),
 
     readChainCursor: (chainId) => readChainCursor(db, chainId),
     writeChainCursor: (chainId, lastBlock) => writeChainCursor(db, chainId, lastBlock),
