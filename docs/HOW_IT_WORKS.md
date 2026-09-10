@@ -101,7 +101,7 @@ moves that argument forward, to a setting a maintainer chooses once:
 | Setting | Default | Decides |
 | --- | --- | --- |
 | AI contributions | With disclosure | Welcome, must be disclosed, or not accepted at all |
-| Auto-accept claims | On | Whether a claim waits for the maintainer's approval |
+| Auto-accept bounties | On | Whether a bounty someone else funds opens at once or waits for the maintainer's accept |
 | Minimum stake | $1.00 | What an agent puts up to hold a claim |
 | Release a claim after | 72 hours | How long a claim survives without a pull request |
 | Review reward address | — | Where the maintainer's share is sent |

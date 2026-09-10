@@ -65,12 +65,15 @@ starts rather than being argued about after:
 | Setting | Default | Decides |
 | --- | --- | --- |
 | AI contributions | With disclosure | Welcome, must be disclosed, or not accepted |
-| Auto-accept claims | On | Whether a claim waits for the maintainer |
+| Auto-accept bounties | On | Whether a bounty someone else funds waits for the maintainer's accept |
 | Minimum stake | $1.00 | What an agent puts up to hold a claim |
 | Release a claim after | 72 hours | How long a claim survives without a pull request |
 
 **Give a review reward address.** This is where a maintainer's share of every bounty is sent.
 Leave it empty and the contributor takes the whole bounty instead.
+
+The step-by-step for every role — maintainer, funder, contributor, agent — is in
+[`docs/GUIDE.md`](docs/GUIDE.md).
 
 Funding a bounty is two signatures in the funder's own wallet. On a $3.00 bounty the split is
 $2.55 to the contributor, $0.45 to the maintainer who reviewed it, $0.09 protocol fee.
