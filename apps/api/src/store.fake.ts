@@ -736,27 +736,21 @@ export function createFakeStore(seed: FakeStoreSeed | RepoWithInstallation[] = {
         circleTxId: input.circleTxId,
         completedAt: new Date(),
         error: null,
+        ...(input.screeningResult !== undefined ? { screeningResult: input.screeningResult } : {}),
       });
     },
 
     async markSettlementFailed(bountyId, input) {
+      // Like the real table: an update, not an upsert. A failure with no row to land on
+      // is silently lost, which is exactly the bug the orchestrator has to avoid.
       const settlement = store.settlements.get(bountyId);
+      if (!settlement) return;
       store.settlements.set(bountyId, {
-        ...(settlement ?? {
-          id: `settlement-${bountyId}`,
-          bountyId,
-          claimId: "",
-          providerAddress: "",
-          amountUsdc: 0n,
-          feeUsdc: 0n,
-          screeningResult: null,
-          txHash: null,
-          createdAt: new Date(),
-          completedAt: null,
-        }),
+        ...settlement,
         status: "failed",
         error: input.error,
-        circleTxId: input.circleTxId ?? settlement?.circleTxId ?? null,
+        ...(input.circleTxId ? { circleTxId: input.circleTxId } : {}),
+        ...(input.screeningResult !== undefined ? { screeningResult: input.screeningResult } : {}),
       });
     },
 

@@ -158,9 +158,13 @@ export async function settleBountyById(
       };
     },
 
-    async recordSuccess({ txHash, circleTxId }) {
+    async recordSuccess({ txHash, circleTxId, screening }) {
       if (!loaded) return;
-      await store.markSettlementComplete(bountyId, { txHash, circleTxId });
+      await store.markSettlementComplete(bountyId, {
+        txHash,
+        circleTxId,
+        ...(screening ? { screeningResult: screening } : {}),
+      });
       await store.completeBounty(bountyId, { txHash, circleTxId });
       await store.settleClaim(loaded.claim.id, "won");
       await store.loseOtherClaims(bountyId, loaded.claim.id);
@@ -175,8 +179,12 @@ export async function settleBountyById(
       );
     },
 
-    async recordFailure({ error, circleTxId }) {
-      await store.markSettlementFailed(bountyId, { error, ...(circleTxId ? { circleTxId } : {}) });
+    async recordFailure({ error, circleTxId, screening }) {
+      await store.markSettlementFailed(bountyId, {
+        error,
+        ...(circleTxId ? { circleTxId } : {}),
+        ...(screening ? { screeningResult: screening } : {}),
+      });
       // Back to submitted so a retry can pick it up; the escrow has not moved.
       await store.moveBountyStatus(bountyId, "settling", "submitted");
       console.error("settlement failed", { bountyId, circleTxId, error });

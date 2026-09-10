@@ -93,6 +93,7 @@ describe("settling a merged pull request", () => {
       bountyId: "b1",
       txHash: "0xtx",
       circleTxId: "circle-1",
+      screening: { approved: true },
     });
   });
 
@@ -197,7 +198,13 @@ describe("refusing to pay", () => {
 
     expect(result).toEqual({ kind: "blocked", reason: "sanctioned address" });
     expect(ports.execute).not.toHaveBeenCalled();
-    expect(ports.recordFailure).toHaveBeenCalled();
+    // The row exists before the screening, so the block is recorded on it.
+    expect(ports.markSettling).toHaveBeenCalledWith("b1");
+    expect(ports.recordFailure).toHaveBeenCalledWith({
+      bountyId: "b1",
+      error: "sanctioned address",
+      screening: { approved: false, reason: "sanctioned address" },
+    });
   });
 });
 
@@ -229,6 +236,7 @@ describe("when the chain misbehaves", () => {
       bountyId: "b1",
       error: "reverted",
       circleTxId: "circle-1",
+      screening: { approved: true },
     });
   });
 

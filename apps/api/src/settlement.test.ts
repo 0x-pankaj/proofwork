@@ -201,7 +201,10 @@ describe("settleBountyById", () => {
     expect(outcome.kind).toBe("blocked");
     expect(context.create).not.toHaveBeenCalled();
     expect(context.store.bounties.get("bounty-1")?.status).toBe("submitted");
-    expect(context.store.settlements.get("bounty-1")).toMatchObject({ status: "failed" });
+    expect(context.store.settlements.get("bounty-1")).toMatchObject({
+      status: "failed",
+      screeningResult: { approved: false },
+    });
     expect(context.posted[0]?.body).toContain("did not go through");
   });
 

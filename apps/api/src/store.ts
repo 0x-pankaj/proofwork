@@ -185,11 +185,11 @@ export interface Store {
   markSettlementSubmitted(bountyId: string, circleTxId: string): Promise<void>;
   markSettlementComplete(
     bountyId: string,
-    input: { txHash: string; circleTxId: string },
+    input: { txHash: string; circleTxId: string; screeningResult?: unknown },
   ): Promise<void>;
   markSettlementFailed(
     bountyId: string,
-    input: { error: string; circleTxId?: string },
+    input: { error: string; circleTxId?: string; screeningResult?: unknown },
   ): Promise<void>;
   recordReputationEvent(input: ReputationInput): Promise<void>;
 

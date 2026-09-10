@@ -76,7 +76,7 @@ export async function markSettlementSubmitted(
 export async function markSettlementComplete(
   db: Database,
   bountyId: string,
-  input: { txHash: string; circleTxId: string },
+  input: { txHash: string; circleTxId: string; screeningResult?: unknown },
 ): Promise<void> {
   await db
     .update(settlements)
@@ -86,6 +86,7 @@ export async function markSettlementComplete(
       circleTxId: input.circleTxId,
       completedAt: new Date(),
       error: null,
+      ...(input.screeningResult !== undefined ? { screeningResult: input.screeningResult } : {}),
     })
     .where(eq(settlements.bountyId, bountyId));
 }
@@ -93,7 +94,7 @@ export async function markSettlementComplete(
 export async function markSettlementFailed(
   db: Database,
   bountyId: string,
-  input: { error: string; circleTxId?: string },
+  input: { error: string; circleTxId?: string; screeningResult?: unknown },
 ): Promise<void> {
   await db
     .update(settlements)
@@ -101,6 +102,7 @@ export async function markSettlementFailed(
       status: "failed",
       error: input.error.slice(0, 2000),
       ...(input.circleTxId ? { circleTxId: input.circleTxId } : {}),
+      ...(input.screeningResult !== undefined ? { screeningResult: input.screeningResult } : {}),
     })
     .where(eq(settlements.bountyId, bountyId));
 }

@@ -78,8 +78,18 @@ export interface SettlementPorts {
   /** Submits the on-chain settlement and returns a handle to poll. */
   execute(request: ExecutionRequest): Promise<{ circleTxId: string }>;
   confirm(circleTxId: string): Promise<ConfirmationResult>;
-  recordSuccess(input: { bountyId: string; txHash: string; circleTxId: string }): Promise<void>;
-  recordFailure(input: { bountyId: string; error: string; circleTxId?: string }): Promise<void>;
+  recordSuccess(input: {
+    bountyId: string;
+    txHash: string;
+    circleTxId: string;
+    screening?: ScreeningResult;
+  }): Promise<void>;
+  recordFailure(input: {
+    bountyId: string;
+    error: string;
+    circleTxId?: string;
+    screening?: ScreeningResult;
+  }): Promise<void>;
   /** Best effort. A failure here must never undo a payment. */
   comment(input: { bountyId: string; txHash: string; split: Split }): Promise<void>;
   /** Best effort, agents only. */
@@ -134,16 +144,18 @@ export async function settleBounty(
     return { kind: "skipped", reason: "a review reward is set but the maintainer has no address" };
   }
 
+  const split = splitFor(bounty.amountUsdc, bounty.maintainerRewardBps, bounty.feeUsdc);
+
+  // The settlement row is opened before screening, so a blocked payout leaves a record
+  // of what was screened and why it stopped, rather than nothing at all.
+  await ports.markSettling(bountyId);
+
   const screening = await ports.screen(claim.payoutAddress);
   if (!screening.approved) {
     const reason = screening.reason ?? "payout address failed screening";
-    await ports.recordFailure({ bountyId, error: reason });
+    await ports.recordFailure({ bountyId, error: reason, screening });
     return { kind: "blocked", reason };
   }
-
-  const split = splitFor(bounty.amountUsdc, bounty.maintainerRewardBps, bounty.feeUsdc);
-
-  await ports.markSettling(bountyId);
 
   let circleTxId: string;
   try {
@@ -160,18 +172,18 @@ export async function settleBounty(
     circleTxId = submitted.circleTxId;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    await ports.recordFailure({ bountyId, error: message });
+    await ports.recordFailure({ bountyId, error: message, screening });
     return { kind: "failed", error: message };
   }
 
   const confirmation = await ports.confirm(circleTxId);
   if (confirmation.status !== "complete" || !confirmation.txHash) {
     const message = confirmation.error ?? "settlement transaction did not complete";
-    await ports.recordFailure({ bountyId, error: message, circleTxId });
+    await ports.recordFailure({ bountyId, error: message, circleTxId, screening });
     return { kind: "failed", error: message };
   }
 
-  await ports.recordSuccess({ bountyId, txHash: confirmation.txHash, circleTxId });
+  await ports.recordSuccess({ bountyId, txHash: confirmation.txHash, circleTxId, screening });
 
   // Past this point the money has moved. Nothing below may change the outcome.
   await settled(ports.comment({ bountyId, txHash: confirmation.txHash, split }));
