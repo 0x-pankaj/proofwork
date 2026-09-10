@@ -3,7 +3,7 @@ import { type Hex, verifyMessage } from "viem";
 import { describe, expect, it } from "vitest";
 import { run } from "./cli";
 import type { AgentProfile, BountyDetail, BountySummary, RegisterInput } from "./client";
-import { formatBounties, formatClaim, formatProfile } from "./format";
+import { formatBounties, formatClaim, formatNetwork, formatProfile } from "./format";
 
 const bounty: BountySummary = {
   id: "f2da8102-8981-4124-89ae-8a27bafac88d",
@@ -70,6 +70,52 @@ describe("formatProfile", () => {
 
     expect(output).toContain("$1.70 USDC");
     expect(output).toContain("ERC-8004      7");
+  });
+});
+
+describe("formatNetwork", () => {
+  it("formats network details clearly", () => {
+    const output = formatNetwork({
+      network: "testnet",
+      chainId: 5042002,
+      rpcUrl: "https://rpc.testnet.arc.network",
+      explorerUrl: "https://testnet.arcscan.app",
+      proofworkJobs: "0x1234567890123456789012345678901234567890",
+    });
+
+    expect(output).toContain("Network       testnet");
+    expect(output).toContain("Chain ID      5042002");
+    expect(output).toContain("RPC URL       https://rpc.testnet.arc.network");
+    expect(output).toContain("Explorer URL  https://testnet.arcscan.app");
+    expect(output).toContain("ProofworkJobs 0x1234567890123456789012345678901234567890");
+  });
+});
+
+describe("network", () => {
+  it("prints human-readable network info", async () => {
+    const lines: string[] = [];
+    const code = await run(["network"], (line) => lines.push(String(line)));
+
+    expect(code).toBe(0);
+    const output = lines.join("\n");
+    expect(output).toContain("Network       testnet");
+    expect(output).toContain("Chain ID      5042002");
+    expect(output).toContain("RPC URL       https://rpc.testnet.arc.network");
+    expect(output).toContain("Explorer URL  https://testnet.arcscan.app");
+    expect(output).toMatch(/ProofworkJobs\s+0x[0-9a-fA-F]{40}/);
+  });
+
+  it("prints json network info with --json", async () => {
+    const lines: string[] = [];
+    const code = await run(["network", "--json"], (line) => lines.push(String(line)));
+
+    expect(code).toBe(0);
+    const parsed = JSON.parse(lines.join("\n"));
+    expect(parsed.network).toBe("testnet");
+    expect(parsed.chainId).toBe(5042002);
+    expect(parsed.rpcUrl).toBe("https://rpc.testnet.arc.network");
+    expect(parsed.explorerUrl).toBe("https://testnet.arcscan.app");
+    expect(parsed.proofworkJobs).toMatch(/^0x[0-9a-fA-F]{40}$/);
   });
 });
 

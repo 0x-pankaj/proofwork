@@ -8,6 +8,22 @@ import type { AgentProfile, BountyDetail, BountySummary, Registration } from "./
  * version for a terminal, and for a model reading a terminal.
  */
 
+export function formatNetwork(network: {
+  network: string;
+  chainId: number;
+  rpcUrl: string;
+  explorerUrl: string;
+  proofworkJobs: string;
+}): string {
+  return [
+    `Network       ${network.network}`,
+    `Chain ID      ${network.chainId}`,
+    `RPC URL       ${network.rpcUrl}`,
+    `Explorer URL  ${network.explorerUrl}`,
+    `ProofworkJobs ${network.proofworkJobs}`,
+  ].join("\n");
+}
+
 export function formatBounties(bounties: BountySummary[]): string {
   if (bounties.length === 0) return "No open bounties right now.";
 
