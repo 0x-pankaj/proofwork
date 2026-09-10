@@ -4,7 +4,7 @@ import { EmptyState, PageHeading, Panel, StatusPill } from "@/components/ui";
 import { WalletProvider } from "@/components/wallet-provider";
 import { api } from "@/lib/api";
 import { timeAgo, usdc } from "@/lib/format";
-import type { BountyStatus, Me } from "@/lib/types";
+import type { BountyStatus, Me, RepoSummary } from "@/lib/types";
 import { PayoutCard } from "./payout-card";
 
 export const dynamic = "force-dynamic";
@@ -54,11 +54,12 @@ export default async function MePage() {
     );
   }
 
-  const [me, claims, settlements, funded] = await Promise.all([
+  const [me, claims, settlements, funded, repos] = await Promise.all([
     api<Me>("/v1/users/me", { actingUserId: user.id }),
     api<{ claims: ClaimRow[] }>("/v1/users/me/claims", { actingUserId: user.id }),
     api<{ settlements: SettlementRow[] }>("/v1/users/me/settlements", { actingUserId: user.id }),
     api<{ bounties: FundedRow[] }>("/v1/users/me/bounties", { actingUserId: user.id }),
+    api<{ repos: RepoSummary[] }>("/v1/repos", { actingUserId: user.id }),
   ]);
 
   const earned = settlements.settlements
@@ -86,6 +87,36 @@ export default async function MePage() {
           </p>
         </Panel>
       </div>
+
+      <Section title="Repositories you maintain">
+        {repos.repos.length === 0 ? (
+          <EmptyState title="No repository yet.">
+            <p>
+              <Link href="/install" className="text-accent-ink underline">
+                Install the GitHub App
+              </Link>{" "}
+              on a repository you maintain, then set its terms here.
+            </p>
+          </EmptyState>
+        ) : (
+          <Rows>
+            {repos.repos.map((repo) => (
+              <li key={repo.id}>
+                <Link
+                  href={`/repos/${repo.id}/settings`}
+                  className="flex items-center gap-4 py-4 transition hover:bg-surface"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-medium">{repo.fullName}</p>
+                    <p className="mt-1 text-sm text-ink-faint">{policySummary(repo)}</p>
+                  </div>
+                  <span className="text-sm text-accent-ink underline">Settings</span>
+                </Link>
+              </li>
+            ))}
+          </Rows>
+        )}
+      </Section>
 
       <Section title="Claims">
         {claims.claims.length === 0 ? (
@@ -176,6 +207,17 @@ export default async function MePage() {
       </Section>
     </>
   );
+}
+
+/** The terms in one line, so a maintainer can see at a glance what still needs setting. */
+function policySummary(repo: RepoSummary): string {
+  const ai = { allowed: "AI welcome", disclosure: "AI with disclosure", none: "no AI" }[
+    repo.policy.aiContributions
+  ];
+  const reward = repo.maintainerPayoutAddress
+    ? "review reward set"
+    : "no review reward address yet";
+  return `${ai} · ${usdc(repo.policy.minStakeUsdc)} stake · ${repo.policy.claimTtlHours}h claims · ${reward}`;
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
