@@ -178,6 +178,8 @@
       },
       "dependencies": {
         "@proofwork/chain": "workspace:*",
+        "@proofwork/core": "workspace:*",
+        "viem": "^2.56.3",
       },
       "devDependencies": {
         "@proofwork/config": "workspace:*",
