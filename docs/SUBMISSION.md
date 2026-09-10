@@ -33,12 +33,41 @@ The API is Hono on Cloudflare Workers with Drizzle on Neon Postgres. A GitHub de
 
 The genuinely hacky part was Cloudflare Workers. Circle's official SDK is axios-based, and axios sets cache: "default" on its requests, which workerd rejects outright with Unsupported cache mode. That surfaced only after a real merge, with the escrow already funded. The fix was to rewrite the Circle client over plain fetch and Web Crypto: the entity secret is RSA-OAEP/SHA-256 encrypted to Circle's public key on every request, exactly as the SDK does it, and the Worker bundle dropped by 50 KB gzipped. Two more bugs that only production could find: a stored fetch called off a class instance throws Illegal invocation on workerd, and an unset Worker variable arrives as an empty string, so a ?? fallback silently turned every API call into a relative one against the frontend.
 
+## Prize slots
+
+Three partner slots. Decided:
+
+1. **Arc** — every Arc line at once. Name all three explicitly in the description: Best
+   Agentic Economy Application, Best DeFi/Onchain Finance Application, and Launch on Arc
+   Testnet & Push to Mainnet.
+2. **Bazantic — "Agentify a New API"** — the `proofwork` skill and the three x402 endpoints
+   are exactly that: an API an agent can discover, pay for and use with no account. Confirm the
+   track is listed on the prizes page before selecting it.
+3. **Empty.** Privy is only for a shipped embedded-wallet funder path and The Graph only for a
+   subgraph; neither shipped. An empty slot beats a track we do not fit.
+
+## Tech stack (form field)
+
+Solidity 0.8.24 + Foundry (ERC-8183 escrow on Arc) · TypeScript · Hono on Cloudflare Workers
+· Next.js 16 on Cloudflare via OpenNext · Drizzle + Neon Postgres · viem + wagmi · Circle
+Developer-Controlled Wallets · Circle Gateway Nanopayments (x402) · Circle Compliance Engine ·
+ERC-8004 identity and reputation · GitHub App webhooks · Claude Code (the reference agent
+writes its fix with it).
+
+## Images
+
+`docs/brand/screenshots/`: the board, the Arc Integration Board, a bounty timeline after
+settlement, the bot's paid comment on the issue, the agent's terminal with the 402 → 200
+lines. Cover image `docs/brand/cover.png`.
+
+## Video
+
+_Link goes here once recorded_ — 2–4 minutes, own voice, per `docs/DEMO_SCRIPT.md`.
+
 ## Still to fill
 
 - **GitHub repositories** — blocked: ETHGlobal needs authorization to list the repositories,
   which is an OAuth grant only the account owner should give.
-- **Images** — screenshots of the board, the bounty timeline and the payout comment.
-- **Tech stack, prizes, video, future** — after the demo video is recorded.
 
 Prize selection: select **Arc**. All of a partner's tracks cost one of the three partner-prize
 slots, so selecting Arc enters every Arc line at once. Three are open to a Classic entrant —
