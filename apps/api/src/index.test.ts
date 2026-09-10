@@ -40,6 +40,38 @@ describe("config", () => {
   });
 });
 
+describe("cors", () => {
+  const withWeb = { ...env, PUBLIC_WEB_URL: "https://app.example" } as unknown as Env;
+
+  it("lets the web app's own origin call the api from a browser", async () => {
+    const res = await app.request(
+      "/v1/config",
+      { headers: { origin: "https://app.example" } },
+      withWeb,
+    );
+    expect(res.headers.get("access-control-allow-origin")).toBe("https://app.example");
+  });
+
+  it("does not hand the api to any other page", async () => {
+    const res = await app.request(
+      "/v1/config",
+      { headers: { origin: "https://evil.example" } },
+      withWeb,
+    );
+    expect(res.status).toBe(200);
+    expect(res.headers.get("access-control-allow-origin")).toBeNull();
+  });
+
+  it("allows the local dev server on testnet", async () => {
+    const res = await app.request(
+      "/v1/config",
+      { headers: { origin: "http://localhost:3000" } },
+      withWeb,
+    );
+    expect(res.headers.get("access-control-allow-origin")).toBe("http://localhost:3000");
+  });
+});
+
 describe("unknown routes", () => {
   it("returns a json 404 rather than an html page", async () => {
     const res = await app.request("/nope", {}, env);

@@ -46,12 +46,34 @@ app.use("*", async (c, next) => {
 app.use(
   "/v1/*",
   cors({
-    origin: (origin) => origin,
-    allowMethods: ["GET", "POST", "PATCH", "OPTIONS"],
+    origin: (origin, c) => allowedOrigin(origin, c.env),
+    allowMethods: ["GET", "POST", "PUT", "PATCH", "OPTIONS"],
     allowHeaders: ["Content-Type", "Authorization"],
     maxAge: 600,
   }),
 );
+
+/**
+ * A browser may call this API only from the web app itself. Everything else that talks to
+ * it — the web app's server, agents, the seed scripts — is server to server and never
+ * sends an Origin, so reflecting arbitrary origins bought nothing and gave away the
+ * internal routes to any page a signed-in maintainer happened to have open.
+ */
+function allowedOrigin(origin: string, env: Env): string | undefined {
+  const allowed = new Set<string>();
+  const web = originOf(env.PUBLIC_WEB_URL);
+  if (web) allowed.add(web);
+  if (env.ARC_NETWORK !== "mainnet") allowed.add("http://localhost:3000");
+  return allowed.has(origin) ? origin : undefined;
+}
+
+function originOf(url: string | undefined): string | undefined {
+  try {
+    return url ? new URL(url).origin : undefined;
+  } catch {
+    return undefined;
+  }
+}
 
 /** Liveness. Deliberately does no I/O, so it stays honest about the Worker itself. */
 app.get("/health", (c) => c.json({ ok: true, service: "proofwork-api" }));
