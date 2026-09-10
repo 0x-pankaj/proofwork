@@ -517,6 +517,7 @@ export function createFakeStore(seed: FakeStoreSeed | RepoWithInstallation[] = {
         if (filter.minAmountUsdc !== undefined && bounty.amountUsdc < filter.minAmountUsdc) {
           continue;
         }
+        if (filter.tag && !bounty.tags.includes(filter.tag)) continue;
         const found = await store.repoById(bounty.repoId);
         if (found) listings.push({ bounty, repo: found.repo });
       }

@@ -49,6 +49,7 @@ const listSchema = z.object({
   status: z.string().optional(),
   repoId: z.uuid().optional(),
   minAmountUsdc: z.string().regex(AMOUNT).optional(),
+  tag: z.string().min(1).max(40).optional(),
   page: z.coerce.number().int().min(1).optional(),
   perPage: z.coerce.number().int().min(1).max(100).optional(),
 });
@@ -75,6 +76,7 @@ bountyRoutes.get("/", zValidator("query", listSchema), async (c) => {
     ...(query.status ? { status: query.status as never } : {}),
     ...(query.repoId ? { repoId: query.repoId } : {}),
     ...(query.minAmountUsdc ? { minAmountUsdc: BigInt(query.minAmountUsdc) } : {}),
+    ...(query.tag ? { tag: query.tag } : {}),
     limit: perPage,
     offset: ((query.page ?? 1) - 1) * perPage,
   });
@@ -364,7 +366,8 @@ bountyRoutes.post("/:id/retry-settlement", internalOnly, async (c) => {
   );
 });
 
-function summarise(env: Env, bounty: Bounty, repoFullName: string) {
+/** The board row: what a listing shows, with every transaction as an explorer link. */
+export function summarise(env: Env, bounty: Bounty, repoFullName: string) {
   return {
     id: bounty.id,
     repo: repoFullName,

@@ -65,6 +65,20 @@ describe("GET /v1/bounties", () => {
     expect(body.bounties.map((bounty) => bounty.id)).toEqual(["bounty-2"]);
   });
 
+  it("filters by tag", async () => {
+    const store = createFakeStore({
+      repos: [{ repo: fakeRepo(), installation: fakeInstallation() }],
+      bounties: [
+        fakeBounty({ id: "arc", tags: ["arc-integration"] }),
+        fakeBounty({ id: "plain", issueNumber: 13, tags: [] }),
+      ],
+    });
+    const res = await serve(store).request("/v1/bounties?tag=arc-integration", {}, env);
+
+    const body = (await res.json()) as { bounties: Array<{ id: string }> };
+    expect(body.bounties.map((bounty) => bounty.id)).toEqual(["arc"]);
+  });
+
   it("filters by amount", async () => {
     const res = await serve(seeded()).request("/v1/bounties?minAmountUsdc=50000000", {}, env);
 

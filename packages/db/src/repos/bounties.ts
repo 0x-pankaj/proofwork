@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, inArray, isNull, lt, notInArray } from "drizzle-orm";
+import { and, arrayContains, desc, eq, gte, inArray, isNull, lt, notInArray } from "drizzle-orm";
 import type { Database } from "../client";
 import { type Bounty, bounties, type Repo, repos } from "../schema";
 
@@ -139,6 +139,8 @@ export interface BountyFilter {
   status?: Bounty["status"];
   repoId?: string;
   minAmountUsdc?: bigint;
+  /** Only bounties carrying this tag, e.g. the Arc Integration Board's `arc-integration`. */
+  tag?: string;
   limit?: number;
   offset?: number;
 }
@@ -157,6 +159,7 @@ export async function listBounties(
     filter.status ? eq(bounties.status, filter.status) : undefined,
     filter.repoId ? eq(bounties.repoId, filter.repoId) : undefined,
     filter.minAmountUsdc !== undefined ? gte(bounties.amountUsdc, filter.minAmountUsdc) : undefined,
+    filter.tag ? arrayContains(bounties.tags, [filter.tag]) : undefined,
   ].filter((condition) => condition !== undefined);
 
   return db
