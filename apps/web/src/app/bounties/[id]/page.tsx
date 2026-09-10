@@ -80,7 +80,8 @@ export default async function BountyPage({ params }: { params: Promise<{ id: str
             {bounty.issueTitle}
           </h1>
           <p className="mt-2 text-sm text-ink-faint">
-            {settled ? "Paid" : "Expires"} {timeAgo(settled ? bounty.createdAt : bounty.expiresAt)}
+            {settled ? "Paid" : "Expires"}{" "}
+            {timeAgo(settled ? (bounty.settledAt ?? bounty.createdAt) : bounty.expiresAt)}
           </p>
         </div>
 

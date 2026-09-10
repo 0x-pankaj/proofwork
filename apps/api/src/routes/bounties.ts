@@ -383,6 +383,8 @@ export function summarise(env: Env, bounty: Bounty, repoFullName: string) {
     tags: bounty.tags,
     expiresAt: bounty.expiresAt,
     createdAt: bounty.createdAt,
+    // Settling is the last status write a bounty gets, so its timestamp is the payout time.
+    settledAt: bounty.status === "settled" ? bounty.updatedAt : null,
     createTxUrl: bounty.createTxHash ? txUrl(bounty.createTxHash, env) : null,
     settleTxUrl: bounty.settleTxHash ? txUrl(bounty.settleTxHash, env) : null,
     refundTxUrl: bounty.refundTxHash ? txUrl(bounty.refundTxHash, env) : null,

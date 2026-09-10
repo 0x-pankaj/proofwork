@@ -24,7 +24,11 @@ export function BountyList({ bounties }: { bounties: BountySummary[] }) {
                   ? ` · reviewer ${usdcPlain(bounty.split.maintainer)}`
                   : ""}{" "}
                 · {bounty.status === "settled" ? "paid" : "expires"}{" "}
-                {timeAgo(bounty.status === "settled" ? bounty.createdAt : bounty.expiresAt)}
+                {timeAgo(
+                  bounty.status === "settled"
+                    ? (bounty.settledAt ?? bounty.createdAt)
+                    : bounty.expiresAt,
+                )}
               </p>
             </div>
             <StatusPill status={bounty.status} />

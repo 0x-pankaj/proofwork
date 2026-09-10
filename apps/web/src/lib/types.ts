@@ -35,6 +35,7 @@ export interface BountySummary {
   tags: string[];
   expiresAt: string;
   createdAt: string;
+  settledAt: string | null;
   createTxUrl: string | null;
   settleTxUrl: string | null;
 }
