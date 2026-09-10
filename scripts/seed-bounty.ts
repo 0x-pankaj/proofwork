@@ -7,8 +7,11 @@
  * the key — here it is the Circle wallet rather than MetaMask.
  *
  *   bun run seed:bounty -- --repo 0x-pankaj/proofwork --amount 2 --issue 4
+ *   bun run seed:bounty -- --amount 3 --tag arc-integration --title "…" --body "…"
  *
- * With no `--issue` it opens one on the repository first. Requires `wrangler dev`.
+ * With no `--issue` it opens one on the repository first, with `--title` and `--body` or
+ * the default Arc-mainnet one. `--tag` puts the bounty on that board. Talks to
+ * `PUBLIC_API_URL`, so it works against `wrangler dev` and the deployed API alike.
  */
 
 import { formatUsdc, toUsdc, txUrl } from "@proofwork/chain";
@@ -81,6 +84,7 @@ async function main(): Promise<void> {
       amountUsdc: String(amount),
       expiresAt: new Date(Date.now() + days * 86_400_000).toISOString(),
       funderAddress,
+      ...(args.tag ? { tags: [args.tag] } : {}),
     },
     actingUserId: user.id,
   });
@@ -136,13 +140,15 @@ async function openIssue(fullName: string): Promise<number> {
       "user-agent": "proofwork",
     },
     body: JSON.stringify({
-      title: "Add an Arc mainnet address to the deployments record",
-      body: [
-        "`packages/chain/src/deployments.ts` only knows about Arc testnet.",
-        "",
-        "When Arc mainnet launches, the record needs the mainnet chain id and address so",
-        '`proofworkJobsAddress("mainnet")` resolves without an environment variable.',
-      ].join("\n"),
+      title: args.title ?? "Add an Arc mainnet address to the deployments record",
+      body:
+        args.body ??
+        [
+          "`packages/chain/src/deployments.ts` only knows about Arc testnet.",
+          "",
+          "When Arc mainnet launches, the record needs the mainnet chain id and address so",
+          '`proofworkJobsAddress("mainnet")` resolves without an environment variable.',
+        ].join("\n"),
     }),
   });
 
