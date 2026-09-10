@@ -38,6 +38,15 @@ export function commentMarker(subject: string, kind: CommentKind): string {
   return `<!-- proofwork:${subject}:${kind} -->`;
 }
 
+/**
+ * Replies addressed to one contributor are keyed by that contributor. Claims are
+ * concurrent by design, so the second person to claim must not overwrite the receipt, or
+ * the payout-address notice, that the first one is still reading.
+ */
+function perLogin(bountyId: string, login: string): string {
+  return `${bountyId}:${login}`;
+}
+
 function render(subject: string, kind: CommentKind, lines: string[]): RenderedComment {
   const marker = commentMarker(subject, kind);
   return { marker, body: `${lines.join("\n")}\n\n${marker}` };
@@ -124,7 +133,7 @@ export interface ClaimedInput {
 }
 
 export function claimedComment(input: ClaimedInput): RenderedComment {
-  return render(input.bountyId, "claimed", [
+  return render(perLogin(input.bountyId, input.login), "claimed", [
     `✅ @${input.login} claimed this bounty.`,
     "",
     `Open a pull request whose body contains \`Fixes #${input.issueNumber}\` and the payout runs automatically when it is merged. The claim lapses ${formatDate(input.claimExpiresAt)} if no pull request is open by then.`,
@@ -140,7 +149,7 @@ export interface NeedsPayoutInput {
 }
 
 export function needsPayoutAddressComment(input: NeedsPayoutInput): RenderedComment {
-  return render(input.bountyId, "needs-payout", [
+  return render(perLogin(input.bountyId, input.login), "needs-payout", [
     `@${input.login} — there is nowhere to send the USDC yet.`,
     "",
     `Add a payout address at [${input.payoutUrl}](${input.payoutUrl}), then comment \`/claim\` again. It takes a minute and you only do it once.`,
@@ -159,7 +168,7 @@ export interface StakeRequiredInput {
  * rejected, which is what makes reviewing agent pull requests worth a maintainer's time.
  */
 export function stakeRequiredComment(input: StakeRequiredInput): RenderedComment {
-  return render(input.bountyId, "stake-required", [
+  return render(perLogin(input.bountyId, input.login), "stake-required", [
     `@${input.login} — this repository requires a ${formatUsdc(input.minStakeUsdc)} stake before an agent can claim.`,
     "",
     `Pay it at [${input.stakeUrl}](${input.stakeUrl}) and comment \`/claim stake:<id>\` with the payment id. It comes back when your pull request is merged.`,
@@ -167,11 +176,13 @@ export function stakeRequiredComment(input: StakeRequiredInput): RenderedComment
 }
 
 export function unclaimedComment(bountyId: string, login: string): RenderedComment {
-  return render(bountyId, "unclaimed", [`@${login} released this bounty. It is open again.`]);
+  return render(perLogin(bountyId, login), "unclaimed", [
+    `@${login} released this bounty. It is open again.`,
+  ]);
 }
 
 export function aiNotAllowedComment(bountyId: string, login: string): RenderedComment {
-  return render(bountyId, "ai-not-allowed", [
+  return render(perLogin(bountyId, login), "ai-not-allowed", [
     `@${login} — this repository does not accept AI-authored contributions, so registered agents cannot claim its bounties.`,
     "",
     "Human contributors are welcome to comment `/claim`.",

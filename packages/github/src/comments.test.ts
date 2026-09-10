@@ -1,6 +1,7 @@
 import { toUsdc } from "@proofwork/chain";
 import { describe, expect, it } from "vitest";
 import {
+  claimedComment,
   commentMarker,
   fundedComment,
   needsPayoutAddressComment,
@@ -83,5 +84,29 @@ describe("comment templates", () => {
 
     expect(statusComment({ ...base, claimants: [] }).body).toContain("nobody yet");
     expect(statusComment({ ...base, claimants: ["a", "b"] }).body).toContain("@a, @b");
+  });
+});
+
+describe("replies addressed to one contributor", () => {
+  it("are keyed by login, so concurrent claimants do not overwrite each other", () => {
+    const first = claimedComment({
+      bountyId: "bounty-1",
+      login: "first",
+      issueNumber: 4,
+      claimExpiresAt: new Date("2026-09-13T00:00:00Z"),
+    });
+    const second = claimedComment({
+      bountyId: "bounty-1",
+      login: "second",
+      issueNumber: 4,
+      claimExpiresAt: new Date("2026-09-13T00:00:00Z"),
+    });
+
+    expect(first.marker).not.toBe(second.marker);
+    expect(first.marker).toContain("proofwork:bounty-1:first:claimed");
+    expect(
+      needsPayoutAddressComment({ bountyId: "bounty-1", login: "first", payoutUrl: "https://x" })
+        .marker,
+    ).toContain("proofwork:bounty-1:first:needs-payout");
   });
 });
