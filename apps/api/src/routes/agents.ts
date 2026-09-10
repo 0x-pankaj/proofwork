@@ -6,6 +6,7 @@ import {
   publicClient,
   txUrl,
 } from "@proofwork/chain";
+import { agentRegistrationMessage } from "@proofwork/core";
 import type { Agent } from "@proofwork/db";
 import { Hono } from "hono";
 import { createMiddleware } from "hono/factory";
@@ -26,11 +27,8 @@ import type { BountyVariables } from "./bounties";
  * cannot borrow someone else's reputation by pasting an id.
  */
 
-export const AGENT_MESSAGE_PREFIX = "proofwork-agent";
-
-export function registrationMessage(githubLogin: string, walletAddress: string, nonce: string) {
-  return `${AGENT_MESSAGE_PREFIX}:${githubLogin}:${walletAddress.toLowerCase()}:${nonce}`;
-}
+/** The message an agent signs; defined in core so the CLI signs exactly what we verify. */
+export const registrationMessage = agentRegistrationMessage;
 
 export interface AgentVariables extends BountyVariables {
   agent: Agent;
