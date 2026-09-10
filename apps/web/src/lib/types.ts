@@ -100,3 +100,22 @@ export interface Me {
   payoutAddress: string | null;
   payoutKind: string;
 }
+
+/** A curated Arc-integration task that nobody has funded yet. */
+export interface ArcTask {
+  id: string;
+  title: string;
+  repo: string;
+  repoUrl: string;
+  category: string;
+  summary: string;
+  suggestedBudgetUsdc: string;
+  issueUrl: string | null;
+}
+
+export interface ArcBoard {
+  tag: string;
+  funded: BountySummary[];
+  suggested: ArcTask[];
+  categories: string[];
+}

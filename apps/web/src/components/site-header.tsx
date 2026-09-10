@@ -4,6 +4,7 @@ import { buttonStyles } from "@/components/ui";
 
 const NAV = [
   { href: "/", label: "Board" },
+  { href: "/board/arc", label: "Arc board" },
   { href: "/new", label: "Fund an issue" },
   { href: "/me", label: "You" },
 ];

@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { Amount, EmptyState, StatusPill } from "@/components/ui";
+import { BountyList } from "@/components/bounty-list";
+import { Amount, EmptyState } from "@/components/ui";
 import { api } from "@/lib/api";
-import { timeAgo, usdcPlain } from "@/lib/format";
 import type { BountySummary } from "@/lib/types";
 
 /** The board: every funded issue, newest first. This is the shop window. */
@@ -68,6 +68,20 @@ export default async function BoardPage({
         </dl>
       </section>
 
+      <Link
+        href="/board/arc"
+        className="border-rule mt-6 flex flex-wrap items-center justify-between gap-2 rounded-xl border bg-raised px-5 py-4 transition hover:bg-surface"
+      >
+        <span>
+          <span className="font-medium">Arc mainnet lands on 16 September.</span>{" "}
+          <span className="text-ink-soft">
+            The Arc Integration Board lists the chain entries, SDK configs and examples that need a
+            pull request before then.
+          </span>
+        </span>
+        <span className="text-sm text-accent-ink">See the board →</span>
+      </Link>
+
       <nav className="flex flex-wrap items-center gap-2 py-6">
         {FILTERS.map((filter) => {
           const active = filter.value === status;
@@ -96,35 +110,7 @@ export default async function BoardPage({
           </p>
         </EmptyState>
       ) : (
-        <ul className="border-rule divide-rule divide-y border-y">
-          {visible.map((bounty) => (
-            <li key={bounty.id}>
-              <Link
-                href={`/bounties/${bounty.id}`}
-                className="flex flex-wrap items-center gap-x-6 gap-y-2 py-5 transition hover:bg-surface"
-              >
-                <div className="min-w-0 flex-1">
-                  <p className="font-mono text-xs text-ink-faint">
-                    {bounty.repo}#{bounty.issueNumber}
-                  </p>
-                  <p className="mt-1 truncate font-medium">{bounty.issueTitle}</p>
-                  <p className="mt-1 text-sm text-ink-faint">
-                    Contributor {usdcPlain(bounty.split.contributor)}
-                    {BigInt(bounty.split.maintainer) > 0n
-                      ? ` · reviewer ${usdcPlain(bounty.split.maintainer)}`
-                      : ""}{" "}
-                    · {bounty.status === "settled" ? "paid" : "expires"}{" "}
-                    {timeAgo(bounty.status === "settled" ? bounty.createdAt : bounty.expiresAt)}
-                  </p>
-                </div>
-                <StatusPill status={bounty.status} />
-                <div className="w-32 text-right">
-                  <Amount value={bounty.amountUsdc} />
-                </div>
-              </Link>
-            </li>
-          ))}
-        </ul>
+        <BountyList bounties={visible} />
       )}
     </>
   );
