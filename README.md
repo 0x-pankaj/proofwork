@@ -90,7 +90,8 @@ depth — roles, policy, the money, how stakes resolve, and what is and is not e
 | Developer-Controlled Wallets | The verifier wallet that calls `settle`, and the treasury that receives fees. `packages/circle` talks to the API over `fetch` and Web Crypto, so it runs on Cloudflare Workers. |
 | Compliance Engine | The payout address is screened before settlement. Without the entitlement, Circle's own transaction screening is the backstop and a denial is handled as a failed settlement. |
 | Gateway Nanopayments (x402) | `apps/x402` sells three things to agents per call: a bounty fit score, a pull-request pre-review, and the claim stake. No account and no API key — the payment is the authentication. |
-| Faucet | Testnet USDC for the deployer and the verifier wallet. |
+| Agent Stack | The reference agent in `apps/agent` holds its own wallet, deposits into Gateway once, and buys those three calls with signatures: a 402, a signature, a 200. `bunx proofwork register` signs the registration with the same key. |
+| Faucet | Testnet USDC for the deployer, the verifier wallet and the agent. |
 
 Arc's own standards carry the rest: `ProofworkJobs` implements **ERC-8183** job escrow, and
 every settlement for an agent writes **ERC-8004** reputation from the verifier wallet.
@@ -225,6 +226,54 @@ Requires Bun 1.2+ and [Foundry](https://getfoundry.sh).
 USDC on Arc is one balance behind two interfaces: an 18-decimal native view used for gas, and
 the 6-decimal ERC-20 view used for everything else. Every amount in this codebase is a
 6-decimal bigint.
+
+## Mainnet readiness
+
+Arc mainnet opens on 16 September 2026. Moving there is a configuration change, because
+nothing in the application knows a chain id: every address, RPC and explorer comes from
+`packages/chain`, and the contract address comes from the deployment record the deploy
+script writes.
+
+The runbook, in order:
+
+1. **Chain parameters.** Set `ARC_MAINNET_CHAIN_ID`, `ARC_MAINNET_RPC_URL` and
+   `ARC_MAINNET_EXPLORER_URL` from Arc's published references, and the mainnet USDC and
+   ERC-8004 registry addresses in `packages/chain/src/addresses.ts`.
+2. **Circle wallets.** Create the verifier and treasury wallets on `ARC` with a **LIVE** API
+   key (the SDK refuses a test key against mainnet) and fund them with a few USDC for gas.
+3. **Deploy.** `bun run contracts:deploy:mainnet` from the same Foundry keystore, which
+   verifies on ArcScan and writes `deployments/<mainnetChainId>.json`.
+4. **Flip the switch.** `ARC_NETWORK=mainnet` on the API and the web app, redeploy, and
+   smoke-test with a small real bounty on this repository.
+5. **What stays on testnet.** Circle's Gateway and Nanopayments are testnet-only on every
+   chain they support, so `apps/x402` and the agent's payments keep running against Arc
+   testnet until Gateway lists Arc mainnet. The escrow, the settlement and the reputation
+   writes move on day one; the paid endpoints follow when Circle does.
+
+The contract is non-upgradeable and its owner is the deployer key. Ownership moves to a
+multisig before any bounty larger than pocket money is listed on mainnet.
+
+## Roadmap
+
+Built and exercised on testnet: the escrow loop end to end, the maintainer's policy and
+review reward, the three paid endpoints, agent registration with ERC-8004 ownership checks,
+reputation writes on settlement, refunds on cancel and expiry, and the Arc Integration Board.
+`docs/HOW_IT_WORKS.md` says exactly which parts have moved real money.
+
+Next, in order:
+
+- **Mainnet on 16 September**, per the runbook above, with the first real bounties on the
+  Arc Integration Board.
+- **Funding from another chain.** App Kit bridging from Base Sepolia into the funding flow,
+  so a funder whose USDC is elsewhere does not have to leave the page.
+- **Passkey wallets** for human contributors, so a payout address needs no seed phrase and no
+  gas.
+- **Circle Contracts platform** event monitors and webhooks as a second reconciliation path
+  beside the cron.
+- **On-chain stakes** escrowed by the contract rather than held by the treasury, and
+  `evaluatorMode = client` for high-value jobs where the maintainer signs the settlement.
+- Deliberately not built: fiat on/off-ramps, disputes beyond reject-and-refund, a generic
+  wallet, and mobile apps.
 
 ## License
 
