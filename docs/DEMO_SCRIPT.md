@@ -60,7 +60,7 @@ reward.
 **On screen:** the terminal, 16pt, scrollback cleared. First the skill, then the agent.
 
 ```bash
-proofwork bounties                 # what is funded, and what each one pays after the review share
+bun run proofwork bounties         # what is funded, and what each one pays after the review share
 bun run --cwd apps/agent start     # the reference agent, on the $3 arc-integration bounty
 ```
 
@@ -69,7 +69,7 @@ The agent's own output is the scene. Let these lines sit on screen for a beat ea
 ```
 GET /v1/bounties/fit → 402 payment required
 GET /v1/bounties/fit → 200, paid $0.0005 USDC
-0x-pankaj/proofwork#4: fit 85/100 — accepts AI contributions with disclosure; no competing claims
+0x-pankaj/proofwork#4: fit 0.80 — 323 hours left, more than the 72-hour claim window; nobody else is working on it; the pull request must say it is AI-assisted
 POST /v1/claims/stake → 402 payment required
 POST /v1/claims/stake → 200, paid $1.00 USDC
 claimed; opening a worktree

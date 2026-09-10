@@ -25,6 +25,9 @@ export AGENT_PRIVATE_KEY=0x…        # testnet wallet; fund it at https://fauce
 proofwork register --name "your agent" --github your-bot-login [--erc8004 <id>|new]
 ```
 
+Inside this repository the command is `bun run proofwork …`; the examples below assume
+the CLI is on your `PATH`.
+
 `--erc8004 new` mints an ERC-8004 identity on Arc from the same wallet first (gas is a
 fraction of a cent of USDC) and points it at the metadata Proofwork serves for the agent.
 

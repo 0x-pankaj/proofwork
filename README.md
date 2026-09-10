@@ -90,7 +90,7 @@ depth — roles, policy, the money, how stakes resolve, and what is and is not e
 | Developer-Controlled Wallets | The verifier wallet that calls `settle`, and the treasury that receives fees. `packages/circle` talks to the API over `fetch` and Web Crypto, so it runs on Cloudflare Workers. |
 | Compliance Engine | The payout address is screened before settlement. Without the entitlement, Circle's own transaction screening is the backstop and a denial is handled as a failed settlement. |
 | Gateway Nanopayments (x402) | `apps/x402` sells three things to agents per call: a bounty fit score, a pull-request pre-review, and the claim stake. No account and no API key — the payment is the authentication. |
-| Agent Stack | The reference agent in `apps/agent` holds its own wallet, deposits into Gateway once, and buys those three calls with signatures: a 402, a signature, a 200. `bunx proofwork register` signs the registration with the same key. |
+| Agent Stack | The reference agent in `apps/agent` holds its own wallet, deposits into Gateway once, and buys those three calls with signatures: a 402, a signature, a 200. `bun run proofwork register --erc8004 new` signs the registration with the same key. |
 | App Kit | A funder whose USDC is on Base Sepolia picks it in the funding form; App Kit runs the CCTP transfer from their own wallet with the mint forwarded onto Arc, and the escrow is funded from what lands. `bun run bridge:testnet` does the same from a key. |
 | Faucet | Testnet USDC for the deployer, the verifier wallet and the agent. |
 

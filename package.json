@@ -28,7 +28,8 @@
     "dev:webhooks": "bun run scripts/dev-webhooks.ts",
     "seed:bounty": "bun run scripts/seed-bounty.ts",
     "docs:arc-tasks": "bun run scripts/arc-tasks-doc.ts",
-    "bridge:testnet": "bun run scripts/bridge-testnet.ts"
+    "bridge:testnet": "bun run scripts/bridge-testnet.ts",
+    "proofwork": "bun packages/skill/src/cli.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.12",
