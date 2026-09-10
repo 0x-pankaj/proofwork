@@ -131,9 +131,11 @@ async function claim(
   const minStake = BigInt(policy.minStakeUsdc);
   let stakePaymentId: string | null = null;
 
-  if (agent && requiresStake(context.env)) {
+  // A stake the agent offers is held whether or not the deployment demands one: it is the
+  // agent's money, and holding it is what lets the merge give it back.
+  if (agent) {
     const stake = await resolveStake(context, command.stakeId, agent.walletAddress, minStake);
-    if (!stake) {
+    if (!stake && requiresStake(context.env)) {
       await reply(
         context,
         stakeRequiredComment({
@@ -145,7 +147,7 @@ async function claim(
       );
       return;
     }
-    stakePaymentId = stake;
+    stakePaymentId = stake ?? null;
   }
 
   await store.claimBounty({

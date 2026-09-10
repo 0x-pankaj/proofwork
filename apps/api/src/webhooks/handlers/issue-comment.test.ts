@@ -387,6 +387,31 @@ describe("repository policy", () => {
     });
   });
 
+  it("holds a stake the agent offers even where stakes are optional", async () => {
+    const store = agentStore({ payments: [fakeStakePayment()] });
+    const { github } = commentWriter();
+
+    await handleIssueComment({ store, github, env: envWithoutStakes }, stakedComment("payment-1"));
+
+    expect((await store.activeClaimsFor("bounty-1"))[0]).toMatchObject({
+      stakePaymentId: "payment-1",
+      stakeStatus: "held",
+    });
+  });
+
+  it("lets an agent claim without a stake where stakes are optional", async () => {
+    const store = agentStore();
+    const { github } = commentWriter();
+
+    await handleIssueComment({ store, github, env: envWithoutStakes }, agentComment());
+
+    expect((await store.activeClaimsFor("bounty-1"))[0]).toMatchObject({
+      claimantKind: "agent",
+      stakePaymentId: null,
+      stakeStatus: "none",
+    });
+  });
+
   it("refuses a stake paid by somebody else", async () => {
     const store = agentStore({
       payments: [fakeStakePayment({ payer: "0x0000000000000000000000000000000000000001" })],
