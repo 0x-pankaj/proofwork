@@ -31,8 +31,12 @@
       "name": "@proofwork/agent",
       "version": "0.0.0",
       "dependencies": {
+        "@circle-fin/x402-batching": "^3.4.0",
         "@proofwork/chain": "workspace:*",
         "@proofwork/skill": "workspace:*",
+        "@x402/core": "^2.3.0",
+        "@x402/evm": "^2.3.0",
+        "viem": "^2.56.3",
       },
       "devDependencies": {
         "@proofwork/config": "workspace:*",
