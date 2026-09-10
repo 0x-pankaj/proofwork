@@ -9,7 +9,9 @@ read is worse than one with a stumble in it.
 2. The settled bounty — issue #1 on `0x-pankaj/proofwork`, scrolled to the bot's paid comment
 3. ArcScan on the settlement transaction, with the three transfers visible
 4. A terminal in the repository, ready to run the CLI
-5. The bounty page of the open $3 bounty (issue #3)
+5. The bounty page of the open $3 `arc-integration` bounty the agent will take (issue #4)
+6. `/board/arc`, the Arc Integration Board
+7. The agent's profile page on the board, once it has registered
 
 Also decide the one sentence you would keep if you only had ten seconds. It is this:
 
@@ -55,12 +57,22 @@ reward.
 
 ## 0:50 – 1:40 · The work
 
-**On screen:** the terminal.
+**On screen:** the terminal, 16pt, scrollback cleared. First the skill, then the agent.
 
 ```bash
-proofwork bounties
-proofwork show <id>
-proofwork claim <id>
+proofwork bounties                 # what is funded, and what each one pays after the review share
+bun run --cwd apps/agent start     # the reference agent, on the $3 arc-integration bounty
+```
+
+The agent's own output is the scene. Let these lines sit on screen for a beat each:
+
+```
+GET /v1/bounties/fit → 402 payment required
+GET /v1/bounties/fit → 200, paid $0.0005 USDC
+0x-pankaj/proofwork#4: fit 85/100 — accepts AI contributions with disclosure; no competing claims
+POST /v1/claims/stake → 402 payment required
+POST /v1/claims/stake → 200, paid $1.00 USDC
+claimed; opening a worktree
 ```
 
 **Say:**
@@ -69,13 +81,33 @@ proofwork claim <id>
 > funded, what each one actually pays after the maintainer's share, and whether the
 > repository even accepts AI contributions.
 >
-> Claiming is a comment on the issue. That is deliberate: GitHub has already authenticated
-> the account, so the payout is bound to a login someone can be held to. And on repositories
-> that ask for it, an agent stakes first — a nanopayment over x402, which comes back on merge
-> and goes to the maintainer if the pull request is rejected. Slop pays the maintainer.
+> Now the agent. Watch the first request: 402, payment required. It signs — no gas, no
+> account, no API key — and the same request comes back 200. That is Circle Nanopayments
+> over x402, from a Gateway balance the agent topped up once. It pays a twentieth of a cent
+> to ask whether the bounty is worth its time, and a dollar to hold the claim: the stake
+> comes back on merge, and goes to the maintainer if the agent walks away. Slop pays the
+> maintainer.
+>
+> Claiming is still a comment on the issue, from the agent's own GitHub account. GitHub has
+> already authenticated it, so the payout is bound to a login someone can be held to.
 
-**On screen:** `/claim` comment posted, the bot replying, then a pull request whose body says
-`Fixes #N`.
+**On screen:** the `/claim stake:…` comment on the issue and the bot's reply; then the agent's
+terminal again as it opens the pull request and buys the pre-review:
+
+```
+opened https://github.com/0x-pankaj/proofwork/pull/N
+POST /v1/review → 402 payment required
+POST /v1/review → 200, paid $0.05 USDC
+pre-review: addresses the issue (high confidence) — …
+waiting for a maintainer to merge
+```
+
+> Five cents for a second opinion on its own pull request before a maintainer spends an
+> evening on it. Then it waits. It has no way to pay itself.
+
+_This scene must be a recording of a real run, not a re-enactment: the payments row and the
+agent's registration are checkable on the API. Run the agent once before recording day, and
+record the second run._
 
 ---
 
