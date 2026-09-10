@@ -1,29 +1,40 @@
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { formatUsdc } from "@proofwork/chain";
-import { type BountyDetail, type BountySummary, ProofworkClient } from "@proofwork/skill";
+import { formatUsdc, toUsdc } from "@proofwork/chain";
+import { type BountyDetail, DEFAULT_X402_URL, ProofworkClient } from "@proofwork/skill";
+import type { Hex } from "viem";
 import { AgentGitHub } from "./github";
+import { type FitVerdict, pick } from "./pick";
 import { pullRequestBody } from "./pull-request";
 import { must, run } from "./shell";
+import { AgentWallet } from "./wallet";
 
 /**
  * The reference agent: one bounty, start to finish, with nobody clicking anything.
  *
- * It picks a funded issue, claims it by commenting from its own GitHub account, writes the
- * change with Claude Code, opens a pull request that says `Fixes #N`, and then waits. The
- * waiting is the point — the agent has no way to pay itself. A maintainer merges, and the
- * escrow settles on Arc on its own.
+ * It pays a twentieth of a cent to ask which funded issue is worth its time, pays the
+ * repository's stake to hold the claim, claims by commenting from its own GitHub account,
+ * writes the change with Claude Code, buys a pre-review of its own pull request, opens it
+ * saying `Fixes #N`, and then waits. The waiting is the point — the agent has no way to pay
+ * itself. A maintainer merges, and the escrow settles on Arc on its own.
+ *
+ * Every purchase is x402 over Circle Gateway: a 402, a signature, a 200. No account.
  *
  * Deliberately small. It is a worked example of the loop, not a framework.
  */
 
 const POLL_INTERVAL_MS = 15_000;
 const POLL_TIMEOUT_MS = 60 * 60 * 1_000;
+/** A stake, a review and a handful of fit scores, with room to spare. */
+const GATEWAY_FLOOR = toUsdc("1.10");
 
 interface Config {
   apiUrl: string;
   apiKey: string;
+  x402Url: string;
+  /** The wallet that pays and is paid. Without it the agent claims on price alone. */
+  privateKey?: Hex;
   githubToken: string;
   /** How the agent writes code. Anything that takes a prompt and edits the working tree. */
   codeCommand: string;
@@ -34,9 +45,12 @@ interface Config {
 
 function config(): Config {
   const codeCommand = process.env.AGENT_CODE_COMMAND ?? "claude";
+  const privateKey = process.env.AGENT_PRIVATE_KEY;
   return {
     apiUrl: process.env.PROOFWORK_API_URL ?? "",
     apiKey: required("PROOFWORK_AGENT_API_KEY"),
+    x402Url: (process.env.PROOFWORK_X402_URL || DEFAULT_X402_URL).replace(/\/+$/, ""),
+    ...(privateKey ? { privateKey: privateKey as Hex } : {}),
     githubToken: required("AGENT_GITHUB_TOKEN"),
     codeCommand,
     codeArgs: (process.env.AGENT_CODE_ARGS ?? "-p,--permission-mode,acceptEdits").split(","),
@@ -58,7 +72,22 @@ async function main(): Promise<void> {
   const me = await proofwork.me();
   console.log(`working as @${me.githubLogin}, paid to ${me.walletAddress}`);
 
-  const bounty = await pick(proofwork, settings.bountyId);
+  const wallet = await walletFor(settings, me.walletAddress);
+  const bounty = await pick(
+    {
+      bounties: () => proofwork.bounties(),
+      bounty: (id) => proofwork.bounty(id),
+      ...(wallet
+        ? {
+            fit: async (id: string) =>
+              (await wallet.pay<FitVerdict>(`${settings.x402Url}/v1/bounties/fit?bountyId=${id}`))
+                .data,
+          }
+        : {}),
+    },
+    settings.bountyId,
+    console.log,
+  );
   if (!bounty) {
     console.log("nothing open worth claiming right now");
     return;
@@ -74,8 +103,13 @@ async function main(): Promise<void> {
   }
 
   // The comment is the claim. GitHub authenticates it, so this is also how the payout
-  // address gets bound to a login someone can be held to.
-  await github.comment(bounty.repo, bounty.issueNumber, "/claim");
+  // address gets bound to a login someone can be held to. The stake rides along as an id:
+  // the payment itself is what the API checks, from the same wallet that gets paid.
+  await github.comment(
+    bounty.repo,
+    bounty.issueNumber,
+    await claimComment(settings, wallet, bounty),
+  );
   console.log("claimed; opening a worktree");
 
   const workdir = await mkdtemp(join(tmpdir(), "proofwork-agent-"));
@@ -100,31 +134,76 @@ async function main(): Promise<void> {
     });
     console.log(`opened ${pull.html_url}`);
 
+    if (wallet) await preReview(settings, wallet, bounty, pull.number);
     await waitForSettlement(proofwork, bounty.id);
   } finally {
     await rm(workdir, { recursive: true, force: true });
   }
 }
 
-/** The best-paying open bounty this agent is not blocked from claiming. */
-async function pick(
-  proofwork: ProofworkClient,
-  bountyId: string | undefined,
-): Promise<BountyDetail | undefined> {
-  if (bountyId) return proofwork.bounty(bountyId);
-
-  const open = await proofwork.bounties();
-  const richest = [...open].sort((a: BountySummary, b: BountySummary) =>
-    BigInt(b.split.contributor) > BigInt(a.split.contributor) ? 1 : -1,
-  );
-
-  for (const summary of richest) {
-    const bounty = await proofwork.bounty(summary.id);
-    // Somebody else holding it is not a reason to skip — the first merge is paid — but
-    // there is no sense being the fourth agent on the same issue.
-    if (bounty.claims.filter((claim) => claim.status === "active").length < 2) return bounty;
+/**
+ * The agent's wallet, if it has one. It has to be the wallet that was registered: a stake
+ * paid from any other address is refused, and the payout goes to the registered one anyway.
+ */
+async function walletFor(settings: Config, registered: string): Promise<AgentWallet | undefined> {
+  if (!settings.privateKey) {
+    console.log("no AGENT_PRIVATE_KEY: claiming on price alone, without fit, stake or review");
+    return undefined;
   }
-  return undefined;
+  const wallet = new AgentWallet({ privateKey: settings.privateKey });
+  if (wallet.address.toLowerCase() !== registered.toLowerCase()) {
+    throw new Error(
+      `AGENT_PRIVATE_KEY is ${wallet.address} but this agent is registered to ${registered}`,
+    );
+  }
+  await wallet.ensureGatewayBalance(GATEWAY_FLOOR);
+  return wallet;
+}
+
+/** `/claim`, carrying the paid stake's id when the agent has a wallet to pay it from. */
+async function claimComment(
+  settings: Config,
+  wallet: AgentWallet | undefined,
+  bounty: BountyDetail,
+): Promise<string> {
+  if (!wallet) return "/claim";
+  const stake = await wallet.pay<{ stakeId: string; claimComment: string }>(
+    `${settings.x402Url}/v1/claims/stake?bountyId=${bounty.id}`,
+    { method: "POST" },
+  );
+  return stake.data.claimComment;
+}
+
+/**
+ * Five cents to hear whether the pull request actually closes the issue, before a
+ * maintainer spends an evening finding out. Advice only: a bad verdict is printed, not
+ * acted on, because the pull request is already open and the maintainer decides.
+ */
+async function preReview(
+  settings: Config,
+  wallet: AgentWallet,
+  bounty: BountyDetail,
+  prNumber: number,
+): Promise<void> {
+  try {
+    const review = await wallet.pay<{
+      addressesIssue: boolean;
+      confidence: string;
+      risks: string[];
+      summary: string;
+    }>(`${settings.x402Url}/v1/review`, {
+      method: "POST",
+      body: { repo: bounty.repo, prNumber, issueNumber: bounty.issueNumber },
+    });
+    const verdict = review.data;
+    console.log(
+      `pre-review: ${verdict.addressesIssue ? "addresses" : "does not address"} the issue ` +
+        `(${verdict.confidence} confidence) — ${verdict.summary}`,
+    );
+    for (const risk of verdict.risks) console.log(`  risk: ${risk}`);
+  } catch (error) {
+    console.log(`pre-review unavailable: ${error instanceof Error ? error.message : error}`);
+  }
 }
 
 async function clone(
