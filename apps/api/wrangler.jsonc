@@ -8,7 +8,8 @@
   "observability": { "enabled": true },
   // Every minute: reconcile the database against the escrow contract's events.
   // Hourly: expire bounties past their deadline and claims held without a pull request.
-  "triggers": { "crons": ["*/1 * * * *", "0 * * * *"] },
+  // Daily: refund or forward the stakes behind claims that are over.
+  "triggers": { "crons": ["*/1 * * * *", "0 * * * *", "0 3 * * *"] },
   "vars": {
     "ARC_NETWORK": "testnet",
     "PUBLIC_WEB_URL": "https://proofwork-web.0xpankaj.workers.dev",
@@ -22,7 +23,8 @@
     // without a funded Gateway balance. Turned on for mainnet.
     "REQUIRE_AGENT_STAKE": "false"
   }
-  // Secrets are set with `wrangler secret put`, never committed:
-  //   DATABASE_URL, GITHUB_APP_ID, GITHUB_APP_PRIVATE_KEY, GITHUB_WEBHOOK_SECRET,
-  //   CIRCLE_API_KEY, CIRCLE_ENTITY_SECRET, CIRCLE_VERIFIER_WALLET_ID
+  // Secrets are set with `wrangler secret put` (or `bun run scripts/worker-secrets.ts`), never committed:
+  //   DATABASE_URL, INTERNAL_API_KEY, GITHUB_APP_ID, GITHUB_APP_PRIVATE_KEY, GITHUB_WEBHOOK_SECRET,
+  //   CIRCLE_API_KEY, CIRCLE_ENTITY_SECRET, CIRCLE_VERIFIER_WALLET_ID, CIRCLE_VERIFIER_ADDRESS,
+  //   CIRCLE_TREASURY_WALLET_ID; ARC_TESTNET_RPC_URL optionally, to use a private RPC.
 }

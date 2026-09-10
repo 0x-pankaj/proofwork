@@ -1,8 +1,8 @@
 import { setChainEnv } from "@proofwork/chain";
 import app from "./app";
-import { HOURLY_SWEEP, reconcileChain, sweepExpiries } from "./cron";
+import { DAILY_STAKES, HOURLY_SWEEP, reconcileChain, sweepExpiries, sweepStakes } from "./cron";
 import type { Env } from "./env";
-import { db } from "./services";
+import { circleWallets, db, github } from "./services";
 import { databaseStore } from "./store";
 
 /**
@@ -16,8 +16,9 @@ export default {
   fetch: app.fetch,
 
   /**
-   * Scheduled work. Both jobs are safe to run twice and safe to miss: they only ever
-   * bring the database in line with the chain and the clock.
+   * Scheduled work. Every job is safe to run twice and safe to miss: they only ever bring
+   * the database in line with the chain and the clock, and the stake sweep is keyed so a
+   * repeat cannot pay twice.
    */
   async scheduled(controller, env, ctx) {
     setChainEnv(env);
@@ -28,8 +29,10 @@ export default {
         try {
           const result =
             controller.cron === HOURLY_SWEEP
-              ? await sweepExpiries({ store, env })
-              : await reconcileChain({ store, env });
+              ? await sweepExpiries({ store, env, github: github(env) })
+              : controller.cron === DAILY_STAKES
+                ? await sweepStakes({ store, env, wallets: circleWallets(env) })
+                : await reconcileChain({ store, env });
           console.log("cron", { cron: controller.cron, ...result });
         } catch (error) {
           console.error("cron failed", { cron: controller.cron, message: String(error) });

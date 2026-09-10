@@ -6,22 +6,31 @@ import {
   proofworkJobsAddress,
   publicClient,
 } from "@proofwork/chain";
+import type { CircleWallets } from "@proofwork/circle";
+import type { Bounty } from "@proofwork/db";
+import { expiredComment, type GitHubClient } from "@proofwork/github";
 import type { Hex } from "viem";
 import { parseEventLogs } from "viem";
 import type { Env } from "./env";
+import { resolveStakes } from "./stakes";
 import type { Store } from "./store";
+import { bountyUrl } from "./urls";
+import { repoRef } from "./webhooks/repo-ref";
 
 /**
- * The two scheduled jobs.
+ * The scheduled jobs.
  *
  * Webhooks and transaction receipts already keep the database current; these exist for
  * when they do not. A missed delivery, a Worker that died mid-handler, or someone calling
  * the escrow contract directly all end the same way: the chain says one thing and we say
- * another. The reconciler makes the chain win.
+ * another. The reconciler makes the chain win. The sweeps handle what only the clock can
+ * decide: deadlines, stale claims, and stakes waiting to be given back.
  */
 
-/** The hourly sweep; anything else on the schedule is the chain reconciler. */
+/** Deadlines and stale claims. */
 export const HOURLY_SWEEP = "0 * * * *";
+/** Stakes whose claims are over. Anything else on the schedule is the chain reconciler. */
+export const DAILY_STAKES = "0 3 * * *";
 
 /** Arc produces blocks quickly, so a minute of catching up is a small window. */
 export const MAX_BLOCK_SPAN = 2_000n;
@@ -29,6 +38,8 @@ export const MAX_BLOCK_SPAN = 2_000n;
 export interface CronDeps {
   store: Store;
   env: Env;
+  /** For telling the issue about an expiry. Optional: the expiry stands without it. */
+  github?: GitHubClient;
 }
 
 export interface ReconcileResult {
@@ -108,6 +119,7 @@ export interface SweepResult {
 export async function sweepExpiries(deps: CronDeps): Promise<SweepResult> {
   const now = new Date();
   const expired = await deps.store.expireBounties(now);
+  await announceExpiry(deps, expired);
 
   const stale: string[] = [];
   for (const { claim, repo } of await deps.store.activeClaimsWithPolicy()) {
@@ -116,4 +128,58 @@ export async function sweepExpiries(deps: CronDeps): Promise<SweepResult> {
   }
 
   return { bounties: expired.length, claims: await deps.store.expireClaims(stale) };
+}
+
+/** Best effort, one issue at a time: GitHub being down does not un-expire anything. */
+async function announceExpiry(deps: CronDeps, expired: Bounty[]): Promise<void> {
+  if (!deps.github) return;
+  for (const bounty of expired) {
+    try {
+      const found = await deps.store.repoById(bounty.repoId);
+      if (!found) continue;
+      const comment = expiredComment(bounty.id, bounty.amountUsdc, bountyUrl(deps.env, bounty.id));
+      await deps.github.upsertIssueComment(
+        repoRef(found),
+        bounty.issueNumber,
+        comment.marker,
+        comment.body,
+      );
+    } catch (error) {
+      console.error("expiry comment failed", { bountyId: bounty.id, message: String(error) });
+    }
+  }
+}
+
+export interface StakeSweepDeps extends CronDeps {
+  wallets: CircleWallets;
+}
+
+export interface StakeSweepResult {
+  held: number;
+  resolved: number;
+}
+
+/**
+ * Moves the money behind every stake whose claim is over: back to the agent after a win or
+ * a lost race, to the maintainer after a claim that ran out the clock. Settlement tries the
+ * winner's bounty itself; this catches what it could not finish, and every claim that ended
+ * without a settlement at all.
+ */
+export async function sweepStakes(deps: StakeSweepDeps): Promise<StakeSweepResult> {
+  const held = await deps.store.claimsWithHeldStakes();
+
+  const maintainerByBounty = new Map<string, string | null>();
+  for (const { bounty, repo } of held)
+    maintainerByBounty.set(bounty.id, repo.maintainerPayoutAddress);
+
+  let resolved = 0;
+  for (const [bountyId, maintainerAddress] of maintainerByBounty) {
+    const outcomes = await resolveStakes(
+      { store: deps.store, wallets: deps.wallets, env: deps.env },
+      bountyId,
+      maintainerAddress,
+    );
+    resolved += outcomes.length;
+  }
+  return { held: held.length, resolved };
 }
