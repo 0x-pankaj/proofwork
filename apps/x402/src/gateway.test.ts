@@ -56,15 +56,17 @@ describe("the payment gate", () => {
     globalThis.fetch = (async () => {
       throw new Error("offline");
     }) as typeof fetch;
-    const response = await app
-      .request(
+
+    let response: Response;
+    try {
+      response = await app.request(
         "/v1/bounties/fit?bountyId=b1",
         { headers: { "payment-signature": Buffer.from("{}").toString("base64") } },
         env,
-      )
-      .finally(() => {
-        globalThis.fetch = realFetch;
-      });
+      );
+    } finally {
+      globalThis.fetch = realFetch;
+    }
 
     expect(response.status).not.toBe(200);
   });
