@@ -13,6 +13,7 @@ import { logger } from "hono/logger";
 import { type Env, required } from "./env";
 import { fail } from "./http";
 import { type AgentVariables, agentRoutes } from "./routes/agents";
+import { boardRoutes } from "./routes/board";
 import { bountyRoutes } from "./routes/bounties";
 import { repoRoutes } from "./routes/repos";
 import { userRoutes } from "./routes/users";
@@ -71,6 +72,7 @@ app.get("/v1/config", (c) => {
 });
 
 app.route("/v1/agents", agentRoutes);
+app.route("/v1/board", boardRoutes);
 app.route("/v1/bounties", bountyRoutes);
 app.route("/v1/repos", repoRoutes);
 app.route("/v1/users", userRoutes);
