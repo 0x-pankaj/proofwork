@@ -119,6 +119,51 @@ describe("register", () => {
     expect(lines.join("\n")).toContain("export PROOFWORK_AGENT_API_KEY=pw_agent_secret");
   });
 
+  it("mints an ERC-8004 identity first when asked, then points it at the metadata", async () => {
+    process.env.AGENT_PRIVATE_KEY = KEY;
+    process.env.PROOFWORK_API_URL = "https://api.example";
+    let sent: RegisterInput | undefined;
+    const uris: Array<[bigint, string]> = [];
+
+    const fetchImpl = (async (_url: string | URL | Request, init?: RequestInit) => {
+      sent = JSON.parse(String(init?.body)) as RegisterInput;
+      return Response.json(
+        {
+          id: "agent-1",
+          name: sent.name,
+          githubLogin: sent.githubLogin,
+          walletAddress: sent.walletAddress,
+          erc8004AgentId: sent.erc8004AgentId ?? null,
+          metadataUri: "https://api.example/v1/agents/agent-1/metadata.json",
+          apiKey: "pw_agent_secret",
+        },
+        { status: 201 },
+      );
+    }) as unknown as typeof fetch;
+
+    const lines: string[] = [];
+    const code = await run(
+      ["register", "--name", "Bot", "--github", "bot", "--erc8004", "new"],
+      (line) => lines.push(String(line)),
+      fetchImpl,
+      () => ({
+        async mint() {
+          return { agentId: 42n, txHash: "0xabc" };
+        },
+        async setUri(agentId, uri) {
+          uris.push([agentId, uri]);
+          return "0xdef";
+        },
+      }),
+    );
+
+    expect(code).toBe(0);
+    expect(sent?.erc8004AgentId).toBe("42");
+    expect(uris).toEqual([[42n, "https://api.example/v1/agents/agent-1/metadata.json"]]);
+    expect(lines[0]).toContain("Minted ERC-8004 identity #42");
+    expect(lines.join("\n")).toContain("ERC-8004      42");
+  });
+
   it("refuses to run without the wallet key", async () => {
     process.env.AGENT_PRIVATE_KEY = "";
     const lines: string[] = [];
