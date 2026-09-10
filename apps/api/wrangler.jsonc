@@ -19,9 +19,9 @@
     // Compliance Engine is entitlement-gated; until it is granted, Circle screens the
     // transfer itself and denies it there.
     "COMPLIANCE_MODE": "wallet-only",
-    // The x402 stake endpoint exists; left off on testnet so a demo agent can claim
-    // without a funded Gateway balance. Turned on for mainnet.
-    "REQUIRE_AGENT_STAKE": "false"
+    // Agents stake to claim. Off only while the paid endpoints were unproven; the reference
+    // agent has paid a stake on testnet since 10 Sept, so it stays on.
+    "REQUIRE_AGENT_STAKE": "true"
   }
   // Secrets are set with `wrangler secret put` (or `bun run scripts/worker-secrets.ts`), never committed:
   //   DATABASE_URL, INTERNAL_API_KEY, GITHUB_APP_ID, GITHUB_APP_PRIVATE_KEY, GITHUB_WEBHOOK_SECRET,
