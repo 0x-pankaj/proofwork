@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Timeline, type TimelineStep } from "@/components/timeline";
@@ -13,6 +14,24 @@ export const dynamic = "force-dynamic";
 
 /** Statuses where money may still be held on chain and could come back. */
 const HOLDS_ESCROW: string[] = ["pending_accept", "open", "claimed", "submitted", "expired"];
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  try {
+    const bounty = await api<BountyDetail>(`/v1/bounties/${id}`);
+    const paid = bounty.status === "settled";
+    return {
+      title: `${bounty.repo}#${bounty.issueNumber} — ${bounty.issueTitle}`,
+      description: `${usdc(bounty.amountUsdc)} ${paid ? "paid on merge" : "escrowed on Arc"} for "${bounty.issueTitle}". The contributor, the reviewing maintainer and the protocol are paid in one transaction.`,
+    };
+  } catch {
+    return { title: "Bounty" };
+  }
+}
 
 export default async function BountyPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;

@@ -10,6 +10,7 @@
   "services": [{ "binding": "API", "service": "proofwork-api" }],
   "vars": {
     "ARC_NETWORK": "testnet",
+    "PUBLIC_WEB_URL": "https://proofwork-web.0xpankaj.workers.dev",
     "PUBLIC_API_URL": "https://proofwork-api.0xpankaj.workers.dev",
     "PUBLIC_X402_URL": "https://proofwork-x402.0xpankaj.workers.dev",
     "GITHUB_APP_SLUG": "proofwork-arc"
