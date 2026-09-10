@@ -27,10 +27,13 @@
     "dev:vars": "bun run scripts/dev-vars.ts",
     "dev:webhooks": "bun run scripts/dev-webhooks.ts",
     "seed:bounty": "bun run scripts/seed-bounty.ts",
-    "docs:arc-tasks": "bun run scripts/arc-tasks-doc.ts"
+    "docs:arc-tasks": "bun run scripts/arc-tasks-doc.ts",
+    "bridge:testnet": "bun run scripts/bridge-testnet.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.12",
+    "@circle-fin/adapter-viem-v2": "^1.17.1",
+    "@circle-fin/app-kit": "^1.14.0",
     "@circle-fin/developer-controlled-wallets": "^10.8.0",
     "@cloudflare/workers-types": "^5.20260907.1",
     "@proofwork/chain": "workspace:*",

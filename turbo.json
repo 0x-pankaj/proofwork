@@ -35,7 +35,9 @@
     "CIRCLE_TREASURY_ADDRESS",
     "AUTH_GITHUB_ID",
     "AUTH_GITHUB_SECRET",
-    "GITHUB_WEBHOOK_PROXY_URL"
+    "GITHUB_WEBHOOK_PROXY_URL",
+    "BRIDGE_PRIVATE_KEY",
+    "GITHUB_APP_SLUG"
   ],
   "globalDependencies": ["packages/config/**"],
   "tasks": {
