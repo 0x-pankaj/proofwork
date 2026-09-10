@@ -26,7 +26,8 @@
     "github:sync": "bun run scripts/sync-installations.ts",
     "dev:vars": "bun run scripts/dev-vars.ts",
     "dev:webhooks": "bun run scripts/dev-webhooks.ts",
-    "seed:bounty": "bun run scripts/seed-bounty.ts"
+    "seed:bounty": "bun run scripts/seed-bounty.ts",
+    "docs:arc-tasks": "bun run scripts/arc-tasks-doc.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.12",
