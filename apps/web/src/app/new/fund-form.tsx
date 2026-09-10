@@ -1,14 +1,16 @@
 "use client";
 
-import { arcTestnet, bpsOf, toUsdc } from "@proofwork/chain";
+import { arcTestnet, BRIDGE_SOURCES, bpsOf, fromUsdc, toUsdc } from "@proofwork/chain";
 import { useRouter } from "next/navigation";
 import { type ReactNode, useEffect, useState, useTransition } from "react";
+import type { EIP1193Provider } from "viem";
 import { useAccount, useConfig, useConnect, useSendTransaction, useSwitchChain } from "wagmi";
 import { waitForTransactionReceipt } from "wagmi/actions";
-import { buttonStyles, Panel } from "@/components/ui";
+import { buttonStyles, ExplorerLink, Panel } from "@/components/ui";
 import { usdc } from "@/lib/format";
 import type { RepoSummary } from "@/lib/types";
 import { confirmFunding, createBounty, type DraftBounty, listIssues } from "./actions";
+import { BRIDGE_STEPS, type BridgeStepView, bridgeToArc } from "./bridge";
 
 /**
  * Funding, in the funder's own wallet.
@@ -18,7 +20,10 @@ import { confirmFunding, createBounty, type DraftBounty, listIssues } from "./ac
  * and deserves to know exactly what they just signed.
  */
 
-type Stage = "form" | "approving" | "funding" | "confirming" | "done";
+type Stage = "form" | "bridging" | "approving" | "funding" | "confirming" | "done";
+
+/** Where the funder's USDC is now: on Arc already, or on a chain App Kit can bring it from. */
+type Source = "arc" | (typeof BRIDGE_SOURCES)[number]["key"];
 
 interface Issue {
   number: number;
@@ -28,6 +33,7 @@ interface Issue {
 
 const STAGE_LABEL: Record<Stage, string> = {
   form: "",
+  bridging: "Bringing the USDC onto Arc…",
   approving: "Approving the escrow to pull the USDC…",
   funding: "Escrowing the bounty on Arc…",
   confirming: "Confirming with Proofwork…",
@@ -37,9 +43,9 @@ const STAGE_LABEL: Record<Stage, string> = {
 export function FundForm({ repos, feeBps }: { repos: RepoSummary[]; feeBps: number }) {
   const router = useRouter();
   const config = useConfig();
-  const { address, isConnected, chainId } = useAccount();
+  const { address, isConnected, chainId, connector } = useAccount();
   const { connect, connectors, isPending: connecting } = useConnect();
-  const { switchChain } = useSwitchChain();
+  const { switchChain, switchChainAsync } = useSwitchChain();
   const { sendTransactionAsync } = useSendTransaction();
 
   const [repoId, setRepoId] = useState(repos[0]?.id ?? "");
@@ -48,11 +54,15 @@ export function FundForm({ repos, feeBps }: { repos: RepoSummary[]; feeBps: numb
   const [amount, setAmount] = useState("50");
   const [days, setDays] = useState(14);
   const [stage, setStage] = useState<Stage>("form");
+  const [source, setSource] = useState<Source>("arc");
+  const [bridgeSteps, setBridgeSteps] = useState<BridgeStepView[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loadingIssues, startLoadingIssues] = useTransition();
 
   const repo = repos.find((entry) => entry.id === repoId);
-  const wrongChain = isConnected && chainId !== arcTestnet.id;
+  const bridgeSource = BRIDGE_SOURCES.find((entry) => entry.key === source);
+  // Bridging switches chains itself; only a direct escrow needs the wallet on Arc first.
+  const wrongChain = isConnected && !bridgeSource && chainId !== arcTestnet.id;
 
   useEffect(() => {
     if (!repoId) return;
@@ -82,6 +92,29 @@ export function FundForm({ repos, feeBps }: { repos: RepoSummary[]; feeBps: numb
         expiresAt: new Date(Date.now() + days * 86_400_000).toISOString(),
         funderAddress: address,
       });
+
+      if (bridgeSource) {
+        setStage("bridging");
+        setBridgeSteps([]);
+        await switchChainAsync({ chainId: bridgeSource.chain.id });
+        const provider = (await connector?.getProvider()) as EIP1193Provider | undefined;
+        if (!provider) throw new Error("The connected wallet did not expose a provider.");
+
+        const outcome = await bridgeToArc({
+          provider,
+          source: bridgeSource,
+          amount: fromUsdc(BigInt(draft.split.total)),
+          onStep: (step) =>
+            setBridgeSteps((steps) => [...steps.filter((s) => s.name !== step.name), step]),
+        });
+        if (outcome.state !== "success") {
+          const failed = outcome.steps.find((step) => step.state === "error");
+          throw new Error(
+            `The bridge stopped at ${failed?.name ?? "an unknown step"}${failed?.error ? `: ${failed.error}` : "."} Nothing was escrowed; the USDC is either still on ${bridgeSource.label} or already on Arc.`,
+          );
+        }
+        await switchChainAsync({ chainId: arcTestnet.id });
+      }
 
       setStage("approving");
       const approval = await sendTransactionAsync({
@@ -149,6 +182,28 @@ export function FundForm({ repos, feeBps }: { repos: RepoSummary[]; feeBps: numb
           )}
         </Field>
 
+        <Field label="Where is your USDC?">
+          <select
+            value={source}
+            onChange={(event) => setSource(event.target.value as Source)}
+            className="border-rule w-full rounded-lg border bg-paper px-3 py-2"
+          >
+            <option value="arc">Already on Arc testnet</option>
+            {BRIDGE_SOURCES.map((entry) => (
+              <option key={entry.key} value={entry.key}>
+                On {entry.label} — bridge it first
+              </option>
+            ))}
+          </select>
+          {bridgeSource ? (
+            <p className="mt-2 text-sm text-ink-faint">
+              Circle App Kit moves the USDC over CCTP from your own wallet, then the escrow is
+              funded on Arc. You need {bridgeSource.label} gas for the first two signatures; the
+              mint on Arc is forwarded by Circle.
+            </p>
+          ) : null}
+        </Field>
+
         <div className="grid gap-6 sm:grid-cols-2">
           <Field label="Bounty (USDC)">
             <input
@@ -207,6 +262,27 @@ export function FundForm({ repos, feeBps }: { repos: RepoSummary[]; feeBps: numb
         )}
 
         {stage !== "form" ? <p className="text-sm text-ink-soft">{STAGE_LABEL[stage]}</p> : null}
+
+        {bridgeSteps.length > 0 ? (
+          <ol className="border-rule divide-rule divide-y rounded-lg border text-sm">
+            {BRIDGE_STEPS.map(({ name, label }) => {
+              const step = bridgeSteps.find((entry) => entry.name === name);
+              return (
+                <li key={name} className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-2">
+                  <span className="w-5 font-mono text-xs text-ink-faint">
+                    {step?.state === "success" ? "✓" : step?.state === "error" ? "×" : "·"}
+                  </span>
+                  <span className="flex-1">{label}</span>
+                  {step?.explorerUrl ? (
+                    <ExplorerLink href={step.explorerUrl}>transaction</ExplorerLink>
+                  ) : step?.state ? (
+                    <span className="text-ink-faint">{step.state}</span>
+                  ) : null}
+                </li>
+              );
+            })}
+          </ol>
+        ) : null}
       </Panel>
 
       <Panel className="h-fit p-6">
