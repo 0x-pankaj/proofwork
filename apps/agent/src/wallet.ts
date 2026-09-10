@@ -28,6 +28,9 @@ export interface WalletOptions {
   client?: GatewayLike;
   fetch?: typeof fetch;
   log?: (line: string) => void;
+  /** How often to ask Gateway whether a deposit is spendable yet, and for how long. */
+  creditPollMs?: number;
+  creditTimeoutMs?: number;
 }
 
 export interface PayOptions {
@@ -43,6 +46,9 @@ export interface Paid<T> {
 
 /** Deposits are made in whole dollars, so one covers a run rather than a call. */
 export const MIN_DEPOSIT_USDC = 2_000_000n;
+/** Gateway credits an Arc deposit a few seconds after the block, not in it. */
+export const CREDIT_POLL_MS = 2_000;
+export const CREDIT_TIMEOUT_MS = 120_000;
 
 /** How much to move into Gateway so that at least `floor` is available. */
 export function topUpFor(available: bigint, floor: bigint): bigint {
@@ -57,6 +63,8 @@ export class AgentWallet {
   private readonly client: GatewayLike;
   private readonly fetchImpl: typeof fetch;
   private readonly log: (line: string) => void;
+  private readonly creditPollMs: number;
+  private readonly creditTimeoutMs: number;
 
   constructor(options: WalletOptions) {
     this.account = privateKeyToAccount(options.privateKey);
@@ -70,6 +78,8 @@ export class AgentWallet {
       });
     this.fetchImpl = options.fetch ?? fetch.bind(globalThis);
     this.log = options.log ?? console.log;
+    this.creditPollMs = options.creditPollMs ?? CREDIT_POLL_MS;
+    this.creditTimeoutMs = options.creditTimeoutMs ?? CREDIT_TIMEOUT_MS;
   }
 
   /** EIP-191, which is what registration and the payout binding check. */
@@ -100,6 +110,30 @@ export class AgentWallet {
     this.log(`depositing ${formatUsdc(topUp)} into Gateway`);
     const result = await this.client.deposit(formatUnits(topUp, 6));
     this.log(`deposited ${formatUsdc(result.amount)} — ${txUrl(result.depositTxHash)}`);
+    await this.waitForCredit(floor);
+  }
+
+  /**
+   * The deposit is final on Arc in under a second; Gateway notices it a few seconds later.
+   * Paying in between fails as if the wallet were empty, so wait for the balance the
+   * facilitator itself reports rather than trusting the receipt.
+   */
+  private async waitForCredit(floor: bigint): Promise<void> {
+    const deadline = Date.now() + this.creditTimeoutMs;
+    for (;;) {
+      const { gateway } = await this.client.getBalances();
+      if (gateway.available >= floor) {
+        this.log(`gateway balance ${formatUsdc(gateway.available)}, spendable`);
+        return;
+      }
+      if (Date.now() >= deadline) {
+        throw new Error(
+          `Gateway still shows ${formatUsdc(gateway.available)} available ` +
+            `${this.creditTimeoutMs / 1000}s after the deposit; try again in a minute`,
+        );
+      }
+      await new Promise((resolve) => setTimeout(resolve, this.creditPollMs));
+    }
   }
 
   /**

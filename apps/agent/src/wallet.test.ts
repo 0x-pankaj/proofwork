@@ -10,16 +10,35 @@ interface FakeGateway extends GatewayLike {
   paid: string[];
 }
 
-function gateway(balances: { wallet: bigint; gateway: bigint }, status = 200): FakeGateway {
+/**
+ * A Gateway that, like the real one, credits a deposit one balance read after the receipt
+ * — or never, when `credits` is false.
+ */
+function gateway(
+  balances: { wallet: bigint; gateway: bigint },
+  status = 200,
+  credits = true,
+): FakeGateway {
+  let pending = 0n;
+  let reads = 0;
   const fake: FakeGateway = {
     deposits: [],
     paid: [],
     async getBalances() {
+      reads += 1;
+      if (pending > 0n && reads > 1 && credits) {
+        balances.gateway += pending;
+        pending = 0n;
+      }
       return { wallet: { balance: balances.wallet }, gateway: { available: balances.gateway } };
     },
     async deposit(amount) {
       fake.deposits.push(amount);
-      return { depositTxHash: "0xdeadbeef", amount: BigInt(Number(amount) * 1_000_000) };
+      const deposited = BigInt(Number(amount) * 1_000_000);
+      balances.wallet -= deposited;
+      pending += deposited;
+      reads = 0;
+      return { depositTxHash: "0xdeadbeef", amount: deposited };
     },
     async pay(url) {
       fake.paid.push(url);
@@ -67,10 +86,43 @@ describe("AgentWallet", () => {
     expect(enough.deposits).toEqual([]);
 
     const short = gateway({ wallet: 10_000_000n, gateway: 0n });
-    await new AgentWallet({ privateKey: KEY, client: short, log: () => {} }).ensureGatewayBalance(
-      1_100_000n,
-    );
+    const lines: string[] = [];
+    await new AgentWallet({
+      privateKey: KEY,
+      client: short,
+      log: (line) => lines.push(line),
+      creditPollMs: 0,
+    }).ensureGatewayBalance(1_100_000n);
     expect(short.deposits).toEqual(["2"]);
+    expect(lines.at(-1)).toBe("gateway balance $2.00 USDC, spendable");
+  });
+
+  it("waits for gateway to credit the deposit before calling it spendable", async () => {
+    const slow = gateway({ wallet: 10_000_000n, gateway: 0n });
+    const wallet = new AgentWallet({
+      privateKey: KEY,
+      client: slow,
+      log: () => {},
+      creditPollMs: 0,
+    });
+
+    await wallet.ensureGatewayBalance(1_100_000n);
+
+    expect((await slow.getBalances()).gateway.available).toBe(2_000_000n);
+  });
+
+  it("gives up when the deposit is never credited", async () => {
+    const stuck = gateway({ wallet: 10_000_000n, gateway: 0n }, 200, false);
+    const wallet = new AgentWallet({
+      privateKey: KEY,
+      client: stuck,
+      log: () => {},
+      creditPollMs: 0,
+      creditTimeoutMs: 0,
+    });
+
+    await expect(wallet.ensureGatewayBalance(1_100_000n)).rejects.toThrow(/still shows \$0\.00/);
+    expect(stuck.deposits).toEqual(["2"]);
   });
 
   it("points at the faucet when the wallet cannot cover the deposit", async () => {
