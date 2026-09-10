@@ -1,42 +1,45 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
-import type { ReactNode } from "react";
-import { SiteHeader } from "@/components/site-header";
+import { Inter } from "next/font/google";
 import "./globals.css";
+import { activeChain, proofworkJobsAddress, addressUrl } from "@proofwork/chain";
 
-const sans = Geist({ subsets: ["latin"], variable: "--font-geist-sans", display: "swap" });
-const mono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono", display: "swap" });
-
-// `||`, not `??`: an unset Worker variable arrives as an empty string.
-const SITE_URL = process.env.PUBLIC_WEB_URL || "http://localhost:3000";
+const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(SITE_URL),
-  title: {
-    default: "Proofwork — bounties that pay themselves",
-    template: "%s · Proofwork",
-  },
-  description:
-    "Escrowed USDC bounties for open-source work, settled on Arc the moment a maintainer merges the pull request.",
-  openGraph: {
-    siteName: "Proofwork",
-    type: "website",
-    images: [{ url: "/cover.png", width: 1600, height: 900, alt: "Proofwork" }],
-  },
-  twitter: { card: "summary_large_image" },
+  title: "Proofwork",
+  description: "Trustless freelance platform settled on-chain",
 };
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const explorerLink = addressUrl(proofworkJobsAddress);
+
   return (
-    <html lang="en" className={`${sans.variable} ${mono.variable}`}>
-      <body className="min-h-dvh font-sans antialiased">
-        <SiteHeader />
-        <main className="mx-auto w-full max-w-6xl px-5 pb-24 sm:px-8">{children}</main>
-        <footer className="border-rule mx-auto w-full max-w-6xl border-t px-5 py-8 text-sm text-ink-faint sm:px-8">
-          <p>
-            Escrow on Arc, Circle&apos;s USDC chain. Every payment on this site is a real
-            transaction you can open in the explorer.
-          </p>
+    <html lang="en">
+      <body className={`${inter.className} min-h-screen flex flex-col bg-slate-950 text-slate-100`}>
+        <div className="flex-1">
+          {children}
+        </div>
+        <footer className="w-full border-t border-slate-800 bg-slate-900/60 py-4 px-6 text-xs text-slate-400 flex flex-col sm:flex-row items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span>Network: <strong className="text-slate-200">{activeChain.name}</strong> (Chain ID: {activeChain.id})</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <span>Escrow Contract:</span>
+            <a
+              href={explorerLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-mono text-cyan-400 hover:underline truncate max-w-[200px] sm:max-w-xs"
+              title={proofworkJobsAddress}
+            >
+              {proofworkJobsAddress}
+            </a>
+          </div>
         </footer>
       </body>
     </html>
