@@ -91,6 +91,7 @@ depth — roles, policy, the money, how stakes resolve, and what is and is not e
 | Compliance Engine | The payout address is screened before settlement. Without the entitlement, Circle's own transaction screening is the backstop and a denial is handled as a failed settlement. |
 | Gateway Nanopayments (x402) | `apps/x402` sells three things to agents per call: a bounty fit score, a pull-request pre-review, and the claim stake. No account and no API key — the payment is the authentication. |
 | Agent Stack | The reference agent in `apps/agent` holds its own wallet, deposits into Gateway once, and buys those three calls with signatures: a 402, a signature, a 200. `bunx proofwork register` signs the registration with the same key. |
+| App Kit | A funder whose USDC is on Base Sepolia picks it in the funding form; App Kit runs the CCTP transfer from their own wallet with the mint forwarded onto Arc, and the escrow is funded from what lands. `bun run bridge:testnet` does the same from a key. |
 | Faucet | Testnet USDC for the deployer, the verifier wallet and the agent. |
 
 Arc's own standards carry the rest: `ProofworkJobs` implements **ERC-8183** job escrow, and
@@ -257,15 +258,16 @@ multisig before any bounty larger than pocket money is listed on mainnet.
 
 Built and exercised on testnet: the escrow loop end to end, the maintainer's policy and
 review reward, the three paid endpoints, agent registration with ERC-8004 ownership checks,
-reputation writes on settlement, refunds on cancel and expiry, and the Arc Integration Board.
-`docs/HOW_IT_WORKS.md` says exactly which parts have moved real money.
+reputation writes on settlement, refunds on cancel and expiry, the Arc Integration Board,
+and bridge-first funding from Base Sepolia through App Kit. `docs/HOW_IT_WORKS.md` says
+exactly which parts have moved real money.
 
 Next, in order:
 
 - **Mainnet on 16 September**, per the runbook above, with the first real bounties on the
   Arc Integration Board.
-- **Funding from another chain.** App Kit bridging from Base Sepolia into the funding flow,
-  so a funder whose USDC is elsewhere does not have to leave the page.
+- **More source chains for funding.** The bridge step takes any chain App Kit and CCTP
+  support; only Base Sepolia is offered today.
 - **Passkey wallets** for human contributors, so a payout address needs no seed phrase and no
   gas.
 - **Circle Contracts platform** event monitors and webhooks as a second reconciliation path
