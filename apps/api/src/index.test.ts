@@ -94,6 +94,11 @@ describe("malformed ids", () => {
       true,
     );
     expect(isMalformedId(new Error('invalid input syntax for type uuid: "nope"'))).toBe(true);
+    expect(
+      isMalformedId(
+        new Error("Failed query: select ...", { cause: { code: "22P02", message: "invalid" } }),
+      ),
+    ).toBe(true);
     expect(isMalformedId(new Error("connection refused"))).toBe(false);
     expect(isMalformedId(undefined)).toBe(false);
   });

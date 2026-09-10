@@ -26,8 +26,12 @@ export function fail(
  * Postgres refusing an id that is not a UUID. Every table here is keyed by UUID, so a
  * malformed id in a path can only mean "no such record", which is a 404, not a crash.
  */
-export function isMalformedId(error: unknown): boolean {
-  if (typeof error !== "object" || error === null) return false;
-  const { code, message } = error as { code?: unknown; message?: unknown };
-  return code === "22P02" || /invalid input syntax for type uuid/i.test(String(message ?? ""));
+export function isMalformedId(error: unknown, depth = 0): boolean {
+  if (typeof error !== "object" || error === null || depth > 4) return false;
+  const { code, message, cause } = error as { code?: unknown; message?: unknown; cause?: unknown };
+  if (code === "22P02" || /invalid input syntax for type uuid/i.test(String(message ?? ""))) {
+    return true;
+  }
+  // Drizzle reports the query and keeps the driver's error underneath it.
+  return isMalformedId(cause, depth + 1);
 }
