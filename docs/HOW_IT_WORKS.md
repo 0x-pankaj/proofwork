@@ -201,13 +201,33 @@ Stated plainly, because a judge can check it.
 a single transaction on Arc testnet — $1.70 to the contributor, $0.30 to the reviewing
 maintainer, $0.06 fee. The escrow path is real and has moved real money.
 
-**Live but not yet exercised.** The agent path. The three paid endpoints return real
-Gateway-backed 402s, the reference agent deposits into Gateway and pays for fit, stake and
-review, and the registration and reputation code paths are deployed, but as of this writing:
-**0 agents registered, 0 nanopayments settled, 0 reputation events written.** The rails are
-built and reachable; nothing has run down them yet. The same is true of bridge-first funding:
-the App Kit step is in the funding form and in `bun run bridge:testnet`, and no USDC has yet
-crossed from Base Sepolia through it.
+**Exercised, by an agent.** On 10 September the reference agent in `apps/agent` — GitHub
+login `askmilan`, wallet `0x4F7f…3fFC`, ERC-8004 identity
+[#894122](https://testnet.arcscan.app/tx/0xd376b6dac20bec0467432c83a0387fbb537163faf2bf5315605f707af3003816) minted from that wallet — ran
+[issue #5](https://github.com/0x-pankaj/proofwork/issues/5) end to end with nobody typing:
+[deposited $2 into Gateway](https://testnet.arcscan.app/tx/0xc0f6653e84a1102d0c2a1c2ded71601d58892fd7c16c104ecbdf58a6a2a2e3a6),
+paid $0.0005 for a fit score, paid the $1.00 stake and claimed with `/claim stake:<id>`,
+wrote the change, committed and pushed as itself, opened
+[pull request #9](https://github.com/0x-pankaj/proofwork/pull/9), and paid $0.05 for a
+pre-review of its own work. The maintainer merged;
+[settlement](https://testnet.arcscan.app/tx/0x37835f4998d1ccb8c6bc3caa3ff4aa66cbbb5e0f8d6aedd268036e908a4bb530) paid $1.70
+to the agent's wallet, $0.30 to the reviewer and $0.06 fee 3.8 s later, and the verifier
+wrote [`giveFeedback`](https://testnet.arcscan.app/tx/0xb88b3d294db2289da148ce2123d0d94c5dda6c322f01326dfb7fd18143f42104) on
+the reputation registry. The database now holds 1 agent, 5 nanopayments and 1 reputation
+event. `REQUIRE_AGENT_STAKE` is on: an agent that does not stake is told so and is not
+claimed.
+
+**Not yet exercised.** Bridge-first funding: the App Kit step is in the funding form and in
+`bun run bridge:testnet`, and no USDC has yet crossed from Base Sepolia through it. And the
+stake refund on a won claim: the agent's $1.00 stayed `held` after settlement because
+nanopayment income accrues in the treasury's Gateway balance while refunds are sent from its
+on-chain balance, which held only fees. The daily sweep retries once the treasury is topped
+up; the lesson is recorded in the README's mainnet runbook.
+
+**Unsolicited demand.** Within hours of the bounties being funded, three GitHub accounts
+nobody invited opened pull requests against issues #4 and #5 without claiming. The bot told
+each to claim first and asked the two who did claim for a payout address. None has been
+paid, which is the point: the merge pays a claimant, not whoever gets there first.
 
 **The Arc Integration Board** is seeded with four funded tasks on this repository — one
 settled, three open — and 23 suggested tasks across chain registries, wallets, SDKs,

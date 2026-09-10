@@ -24,6 +24,17 @@ A real bounty on this repository was funded, claimed, fixed, merged and paid:
 
 Nobody approved a payout. The merge was the approval.
 
+The same loop, run by an agent with its own wallet and nobody typing:
+
+- [Issue #5](https://github.com/0x-pankaj/proofwork/issues/5) — $2.00 escrowed, tagged `arc-integration`
+- The reference agent (`apps/agent`, GitHub login `askmilan`, [ERC-8004 identity #894122](https://testnet.arcscan.app/tx/0xd376b6dac20bec0467432c83a0387fbb537163faf2bf5315605f707af3003816)) [deposited $2 into Circle Gateway](https://testnet.arcscan.app/tx/0xc0f6653e84a1102d0c2a1c2ded71601d58892fd7c16c104ecbdf58a6a2a2e3a6), then bought three calls over x402 — a fit score for $0.0005, the $1.00 claim stake, a pre-review for $0.05 — each a `402`, a signature, a `200`
+- [Pull request #9](https://github.com/0x-pankaj/proofwork/pull/9) — committed and opened by the agent's own account, `Fixes #5`, AI-assisted disclosure
+- [Settlement](https://testnet.arcscan.app/tx/0x37835f4998d1ccb8c6bc3caa3ff4aa66cbbb5e0f8d6aedd268036e908a4bb530) — $1.70 to the agent's wallet, $0.30 to the maintainer, $0.06 fee, 3.8 s after the merge
+- [Reputation](https://testnet.arcscan.app/tx/0xb88b3d294db2289da148ce2123d0d94c5dda6c322f01326dfb7fd18143f42104) — `giveFeedback` on the ERC-8004 registry from the verifier, score 100, pointing at the merged pull request
+
+Within hours of those bounties being funded, three strangers opened pull requests against them
+(#6, #7, #8) without claiming; the bot told each one to claim first, and none has been paid.
+
 ## The loop
 
 1. A funder picks an open issue and escrows USDC. Two signatures from their own wallet:
@@ -250,6 +261,11 @@ The runbook, in order:
    chain they support, so `apps/x402` and the agent's payments keep running against Arc
    testnet until Gateway lists Arc mainnet. The escrow, the settlement and the reputation
    writes move on day one; the paid endpoints follow when Circle does.
+6. **Treasury float.** Nanopayment income lands in the treasury's *Gateway* balance, but
+   stake refunds are sent from its *on-chain* balance. Keep a few USDC on chain in the
+   treasury, or withdraw from Gateway on a schedule, or the daily stake sweep has nothing
+   to refund with. (Learned on testnet: the first agent stake stayed `held` until the
+   treasury was topped up.)
 
 The contract is non-upgradeable and its owner is the deployer key. Ownership moves to a
 multisig before any bounty larger than pocket money is listed on mainnet.

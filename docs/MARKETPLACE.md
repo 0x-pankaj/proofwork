@@ -63,18 +63,43 @@ curl -i "$BASE_URL/v1/bounties/fit?bountyId=<id>"
 #                    asset 0x3600…0000, amount 500, payTo <treasury>>
 ```
 
-Then a paid call:
+Then paid calls, exactly as the reference agent printed them on 10 September 2026 from
+wallet `0x4F7f4704568E58890d1beC5924eb86B21bC53fFC` on Arc testnet:
+
+```
+GET /v1/bounties/fit → 402 payment required
+GET /v1/bounties/fit → 200, paid $0.0005 USDC
+0x-pankaj/proofwork#5: fit 0.80 — 322 hours left, more than the 72-hour claim window; nobody else is working on it; the pull request must say it is AI-assisted
+POST /v1/claims/stake → 402 payment required
+POST /v1/claims/stake → 200, paid $1.00 USDC
+POST /v1/review → 402 payment required
+POST /v1/review → 200, paid $0.05 USDC
+pre-review: addresses the issue (medium confidence) — The PR replaces the static footer with a SiteFooter component that reads chain name, chain id, and escrow address from @proofwork/chain and links to the explorer, matching the issue's request.
+```
+
+Every paid call is recorded in `x402_payments` with the payer, the amount and the network,
+which is also what makes a claim stake refundable to the address that actually paid it.
+The rows behind the lines above:
+
+| Endpoint | Amount (USDC, 6 dp) | Network | Paid at (UTC) |
+| --- | --- | --- | --- |
+| `/v1/bounties/fit` | 500 | `eip155:5042002` | 2026-09-10 20:22:02 |
+| `/v1/claims/stake` | 1000000 | `eip155:5042002` | 2026-09-10 20:22:05 |
+| `/v1/review` | 50000 | `eip155:5042002` | 2026-09-10 20:28:25 |
+
+The stake row is the one the agent quoted in `/claim stake:54fafe69-01c1-47f7-9c43-923396e401c2`
+on [issue #5](https://github.com/0x-pankaj/proofwork/issues/5); the API matched its payer to
+the registered wallet and held it with the claim. The seller side of those payments shows up
+in the treasury's Gateway balance (`POST /v1/balances` on the Gateway API), not on chain,
+until Circle batches them.
+
+The Circle CLI reads the same listing:
 
 ```bash
 circle services inspect "$BASE_URL/v1/bounties/fit" --output json
 circle services pay "$BASE_URL/v1/bounties/fit?bountyId=<id>" \
   --address <buyer-wallet> --chain <from inspect> --max-amount 0.0005 --estimate
-circle services pay "$BASE_URL/v1/bounties/fit?bountyId=<id>" \
-  --address <buyer-wallet> --chain <from inspect> --max-amount 0.0005 --output json
 ```
-
-Every paid call is recorded in `x402Payments` with the payer, the amount and the network,
-which is also what makes a claim stake refundable to the address that actually paid it.
 
 ## Before submitting
 
