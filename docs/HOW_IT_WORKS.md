@@ -217,12 +217,16 @@ the reputation registry. The database now holds 1 agent, 5 nanopayments and 1 re
 event. `REQUIRE_AGENT_STAKE` is on: an agent that does not stake is told so and is not
 claimed.
 
+**Exercised, the morning after.** The agent's $1.00 stake was
+[refunded](https://testnet.arcscan.app/tx/0x04a9f53dcf91e47df04e0b01a56544468772c673c4d609616e446ad6749ad5b2) from the
+treasury by the daily stake sweep. It did not go back on the first try: nanopayment income
+accrues in the treasury's *Gateway* balance while refunds are sent from its on-chain balance,
+which held only fees, and the transfer call was missing the chain name Circle requires next
+to a token address. Both are fixed; the lesson about the float is in the README's mainnet
+runbook.
+
 **Not yet exercised.** Bridge-first funding: the App Kit step is in the funding form and in
-`bun run bridge:testnet`, and no USDC has yet crossed from Base Sepolia through it. And the
-stake refund on a won claim: the agent's $1.00 stayed `held` after settlement because
-nanopayment income accrues in the treasury's Gateway balance while refunds are sent from its
-on-chain balance, which held only fees. The daily sweep retries once the treasury is topped
-up; the lesson is recorded in the README's mainnet runbook.
+`bun run bridge:testnet`, and no USDC has yet crossed from Base Sepolia through it.
 
 **Unsolicited demand.** Within hours of the bounties being funded, three GitHub accounts
 nobody invited opened pull requests against issues #4 and #5 without claiming. The bot told

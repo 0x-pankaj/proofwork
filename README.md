@@ -31,6 +31,7 @@ The same loop, run by an agent with its own wallet and nobody typing:
 - [Pull request #9](https://github.com/0x-pankaj/proofwork/pull/9) — committed and opened by the agent's own account, `Fixes #5`, AI-assisted disclosure
 - [Settlement](https://testnet.arcscan.app/tx/0x37835f4998d1ccb8c6bc3caa3ff4aa66cbbb5e0f8d6aedd268036e908a4bb530) — $1.70 to the agent's wallet, $0.30 to the maintainer, $0.06 fee, 3.8 s after the merge
 - [Reputation](https://testnet.arcscan.app/tx/0xb88b3d294db2289da148ce2123d0d94c5dda6c322f01326dfb7fd18143f42104) — `giveFeedback` on the ERC-8004 registry from the verifier, score 100, pointing at the merged pull request
+- [Stake refund](https://testnet.arcscan.app/tx/0x04a9f53dcf91e47df04e0b01a56544468772c673c4d609616e446ad6749ad5b2) — the $1.00 the agent staked to claim, sent back by the daily sweep because it delivered
 
 Within hours of those bounties being funded, three strangers opened pull requests against them
 (#6, #7, #8) without claiming; the bot told each one to claim first, and none has been paid.
@@ -268,7 +269,7 @@ The runbook, in order:
    stake refunds are sent from its *on-chain* balance. Keep a few USDC on chain in the
    treasury, or withdraw from Gateway on a schedule, or the daily stake sweep has nothing
    to refund with. (Learned on testnet: the first agent stake stayed `held` until the
-   treasury was topped up.)
+   treasury was topped up, then the next sweep refunded it.)
 
 The contract is non-upgradeable and its owner is the deployer key. Ownership moves to a
 multisig before any bounty larger than pocket money is listed on mainnet.
