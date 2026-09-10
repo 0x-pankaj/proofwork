@@ -1,5 +1,5 @@
 import { defineChain } from "viem";
-import { arcTestnet } from "viem/chains";
+import { arcTestnet, baseSepolia } from "viem/chains";
 import { type ChainEnv, chainEnv } from "./env";
 
 export type ArcNetwork = "testnet" | "mainnet";
@@ -24,6 +24,15 @@ export const CIRCLE_BLOCKCHAIN_TESTNET = "ARC-TESTNET";
 export const APP_KIT_CHAIN_TESTNET = "Arc_Testnet";
 /** Chain key used by the Circle x402 / Gateway client. */
 export const X402_CHAIN_TESTNET = "arcTestnet";
+
+/**
+ * Where a funder's USDC may be sitting before it reaches Arc. App Kit bridges from these
+ * over CCTP; the names are App Kit's own chain identifiers, not chain ids.
+ */
+export const BRIDGE_SOURCES = [
+  { key: "baseSepolia", label: "Base Sepolia", chain: baseSepolia, appKitChain: "Base_Sepolia" },
+] as const;
+export type BridgeSource = (typeof BRIDGE_SOURCES)[number];
 /** CAIP-2 network id used in x402 payment payloads. */
 export const X402_NETWORK_TESTNET = "eip155:5042002";
 

@@ -5,6 +5,7 @@ import {
   activeNetwork,
   addressUrl,
   arcTestnet,
+  BRIDGE_SOURCES,
   chainFor,
   defineArcMainnet,
   explorerUrlFor,
@@ -80,5 +81,15 @@ describe("explorer links", () => {
     expect(explorerUrlFor("testnet", {})).toBe("https://testnet.arcscan.app");
     expect(txUrl("0xabc", {})).toBe("https://testnet.arcscan.app/tx/0xabc");
     expect(addressUrl("0xdef", MAINNET_ENV)).toBe("https://arcscan.app/address/0xdef");
+  });
+});
+
+describe("bridge sources", () => {
+  it("names each source chain the way app kit does, with a real viem chain behind it", () => {
+    for (const source of BRIDGE_SOURCES) {
+      expect(source.appKitChain).toMatch(/^[A-Z][a-z]+_[A-Z][a-z]+$/);
+      expect(source.chain.id).toBeGreaterThan(0);
+      expect(source.chain.id).not.toBe(5_042_002);
+    }
   });
 });
