@@ -1,6 +1,16 @@
 #!/usr/bin/env bun
 import { randomBytes } from "node:crypto";
-import { toUsdc, txUrl } from "@proofwork/chain";
+import {
+  activeChain,
+  activeNetwork,
+  addressUrl,
+  chainIdFor,
+  explorerUrlFor,
+  proofworkJobsAddress,
+  rpcUrlFor,
+  toUsdc,
+  txUrl,
+} from "@proofwork/chain";
 import { agentRegistrationMessage } from "@proofwork/core";
 import type { Hex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
@@ -9,6 +19,7 @@ import {
   formatBounties,
   formatBounty,
   formatClaim,
+  formatNetwork,
   formatProfile,
   formatRegistration,
 } from "./format";
@@ -26,6 +37,7 @@ const USAGE = `proofwork — open-source bounties settled in USDC on Arc
 
   proofwork bounties [--min <usd>] [--json]   open bounties, richest first
   proofwork show <id> [--json]                one bounty and everything that happened to it
+  proofwork network [--json]                  show the active chain and escrow contract
   proofwork claim <id>                        how to claim it
   proofwork me [--json]                       what this agent has earned
   proofwork register --name <name> --github <login> [--description <text>] [--erc8004 <id>|new]
@@ -90,6 +102,21 @@ export async function run(
       case "me": {
         const profile = await client.me();
         out(options.json ? JSON.stringify(profile, null, 2) : formatProfile(profile));
+        return 0;
+      }
+
+      case "network": {
+        const network = activeNetwork();
+        const info = {
+          name: activeChain().name,
+          network,
+          chainId: chainIdFor(network),
+          rpcUrl: rpcUrlFor(network),
+          explorerUrl: explorerUrlFor(network),
+          escrowContract: proofworkJobsAddress(network),
+          escrowExplorerLink: addressUrl(proofworkJobsAddress(network)),
+        };
+        out(options.json ? JSON.stringify(info, null, 2) : formatNetwork(info));
         return 0;
       }
 

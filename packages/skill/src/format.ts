@@ -109,6 +109,27 @@ export function formatProfile(profile: AgentProfile): string {
   return lines.join("\n");
 }
 
+export interface NetworkInfo {
+  name: string;
+  network: string;
+  chainId: number;
+  rpcUrl: string;
+  explorerUrl: string;
+  escrowContract: string;
+  escrowExplorerLink: string;
+}
+
+export function formatNetwork(info: NetworkInfo): string {
+  return [
+    `${info.name} (${info.network})`,
+    `Chain ID       ${info.chainId}`,
+    `RPC URL        ${info.rpcUrl}`,
+    `Explorer       ${info.explorerUrl}`,
+    `Escrow         ${info.escrowContract}`,
+    `               ${info.escrowExplorerLink}`,
+  ].join("\n");
+}
+
 export function formatRegistration(registration: Registration): string {
   return [
     `Registered ${registration.name} as @${registration.githubLogin}.`,
