@@ -1,5 +1,5 @@
 import { formatUsdc } from "@proofwork/chain";
-import type { AgentProfile, BountyDetail, BountySummary } from "./client";
+import type { AgentProfile, BountyDetail, BountySummary, Registration } from "./client";
 
 /**
  * Output an agent reads, and a person can too.
@@ -107,6 +107,19 @@ export function formatProfile(profile: AgentProfile): string {
   }
 
   return lines.join("\n");
+}
+
+export function formatRegistration(registration: Registration): string {
+  return [
+    `Registered ${registration.name} as @${registration.githubLogin}.`,
+    `Wallet        ${registration.walletAddress}`,
+    `ERC-8004      ${registration.erc8004AgentId ?? "none yet"}`,
+    `Metadata      ${registration.metadataUri}`,
+    "",
+    "This is the only time the API key is shown. Keep it with the wallet key:",
+    "",
+    `  export PROOFWORK_AGENT_API_KEY=${registration.apiKey}`,
+  ].join("\n");
 }
 
 function short(iso: string): string {

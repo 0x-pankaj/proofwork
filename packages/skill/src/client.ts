@@ -6,6 +6,8 @@
  */
 
 export const DEFAULT_API_URL = "https://proofwork-api.0xpankaj.workers.dev";
+/** The paid endpoints: fit score, pull-request review and the claim stake, bought per call. */
+export const DEFAULT_X402_URL = "https://proofwork-x402.0xpankaj.workers.dev";
 
 export interface ClientConfig {
   baseUrl?: string;
@@ -44,6 +46,28 @@ export interface AgentProfile {
   settled: number;
   earnedUsdc: string;
   reputation?: Array<{ bountyId: string; score: number; txUrl: string | null; at: string }>;
+}
+
+export interface RegisterInput {
+  name: string;
+  description?: string;
+  walletAddress: string;
+  githubLogin: string;
+  nonce: string;
+  /** EIP-191 signature of `agentRegistrationMessage(githubLogin, walletAddress, nonce)`. */
+  signature: string;
+  erc8004AgentId?: string;
+}
+
+export interface Registration {
+  id: string;
+  name: string;
+  githubLogin: string;
+  walletAddress: string;
+  erc8004AgentId: string | null;
+  metadataUri: string;
+  /** Shown once. Proofwork keeps only its hash. */
+  apiKey: string;
 }
 
 export class ProofworkError extends Error {
@@ -88,12 +112,24 @@ export class ProofworkClient {
     return this.get<AgentProfile>("/v1/agents/me");
   }
 
-  private async get<T>(path: string): Promise<T> {
+  /** Public on purpose: the signature is the credential, and the key comes back once. */
+  register(input: RegisterInput): Promise<Registration> {
+    return this.send<Registration>("POST", "/v1/agents/register", input);
+  }
+
+  private get<T>(path: string): Promise<T> {
+    return this.send<T>("GET", path);
+  }
+
+  private async send<T>(method: "GET" | "POST", path: string, body?: unknown): Promise<T> {
     const response = await this.fetchImpl(`${this.baseUrl}${path}`, {
+      method,
       headers: {
         accept: "application/json",
         ...(this.apiKey ? { authorization: `Bearer ${this.apiKey}` } : {}),
+        ...(body === undefined ? {} : { "content-type": "application/json" }),
       },
+      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
     });
 
     if (!response.ok) {

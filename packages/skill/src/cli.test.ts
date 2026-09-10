@@ -1,5 +1,8 @@
+import { agentRegistrationMessage } from "@proofwork/core";
+import { type Hex, verifyMessage } from "viem";
 import { describe, expect, it } from "vitest";
-import type { AgentProfile, BountyDetail, BountySummary } from "./client";
+import { run } from "./cli";
+import type { AgentProfile, BountyDetail, BountySummary, RegisterInput } from "./client";
 import { formatBounties, formatClaim, formatProfile } from "./format";
 
 const bounty: BountySummary = {
@@ -67,5 +70,64 @@ describe("formatProfile", () => {
 
     expect(output).toContain("$1.70 USDC");
     expect(output).toContain("ERC-8004      7");
+  });
+});
+
+describe("register", () => {
+  // Anvil's first account. A test key, never funded anywhere that matters.
+  const KEY = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
+  const ADDRESS = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266";
+
+  it("signs the registration with the wallet and prints the key once", async () => {
+    process.env.AGENT_PRIVATE_KEY = KEY;
+    process.env.PROOFWORK_API_URL = "https://api.example";
+    let sent: { url: string; body: RegisterInput } | undefined;
+
+    const fetchImpl = (async (url: string | URL | Request, init?: RequestInit) => {
+      sent = { url: String(url), body: JSON.parse(String(init?.body)) as RegisterInput };
+      return Response.json(
+        {
+          id: "agent-1",
+          name: sent.body.name,
+          githubLogin: sent.body.githubLogin,
+          walletAddress: sent.body.walletAddress,
+          erc8004AgentId: null,
+          metadataUri: "https://api.example/v1/agents/agent-1/metadata.json",
+          apiKey: "pw_agent_secret",
+        },
+        { status: 201 },
+      );
+    }) as unknown as typeof fetch;
+
+    const lines: string[] = [];
+    const code = await run(
+      ["register", "--name", "Helpful bot", "--github", "helpful-bot"],
+      (line) => lines.push(String(line)),
+      fetchImpl,
+    );
+
+    expect(code).toBe(0);
+    expect(sent?.url).toBe("https://api.example/v1/agents/register");
+    expect(sent?.body.walletAddress).toBe(ADDRESS);
+    expect(
+      await verifyMessage({
+        address: ADDRESS,
+        message: agentRegistrationMessage("helpful-bot", ADDRESS, sent?.body.nonce ?? ""),
+        signature: (sent?.body.signature ?? "0x") as Hex,
+      }),
+    ).toBe(true);
+    expect(lines.join("\n")).toContain("export PROOFWORK_AGENT_API_KEY=pw_agent_secret");
+  });
+
+  it("refuses to run without the wallet key", async () => {
+    process.env.AGENT_PRIVATE_KEY = "";
+    const lines: string[] = [];
+
+    const code = await run(["register", "--name", "Bot", "--github", "bot"], (line) =>
+      lines.push(String(line)),
+    );
+
+    expect(code).toBe(1);
+    expect(lines.join("\n")).toContain("AGENT_PRIVATE_KEY");
   });
 });
