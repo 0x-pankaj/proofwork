@@ -1,6 +1,13 @@
 #!/usr/bin/env bun
 import { randomBytes } from "node:crypto";
-import { toUsdc } from "@proofwork/chain";
+import {
+  activeNetwork,
+  chainIdFor,
+  explorerUrlFor,
+  proofworkJobsAddress,
+  rpcUrlFor,
+  toUsdc,
+} from "@proofwork/chain";
 import { agentRegistrationMessage } from "@proofwork/core";
 import type { Hex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
@@ -9,6 +16,7 @@ import {
   formatBounties,
   formatBounty,
   formatClaim,
+  formatNetwork,
   formatProfile,
   formatRegistration,
 } from "./format";
@@ -27,6 +35,7 @@ const USAGE = `proofwork — open-source bounties settled in USDC on Arc
   proofwork show <id> [--json]                one bounty and everything that happened to it
   proofwork claim <id>                        how to claim it
   proofwork me [--json]                       what this agent has earned
+  proofwork network [--json]                  active network, chain id, RPC URL and contract address
   proofwork register --name <name> --github <login> [--description <text>] [--erc8004 <id>]
                                               register this wallet as an agent; prints the API key once
 
@@ -87,6 +96,19 @@ export async function run(
       case "me": {
         const profile = await client.me();
         out(options.json ? JSON.stringify(profile, null, 2) : formatProfile(profile));
+        return 0;
+      }
+
+      case "network": {
+        const net = activeNetwork();
+        const info = {
+          network: net,
+          chainId: chainIdFor(net),
+          rpcUrl: rpcUrlFor(net),
+          explorerUrl: explorerUrlFor(net),
+          proofworkJobs: proofworkJobsAddress(net),
+        };
+        out(options.json ? JSON.stringify(info, null, 2) : formatNetwork(info));
         return 0;
       }
 
