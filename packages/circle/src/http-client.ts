@@ -22,7 +22,14 @@ export interface CircleHttpConfig {
   entitySecret: string;
   baseUrl?: string;
   fetch?: typeof fetch;
+  /** Extra attempts after a transient failure. Two by default: three tries in all. */
+  retries?: number;
+  /** First back-off; doubles each attempt. */
+  retryDelayMs?: number;
 }
+
+/** Answers that mean "not now" rather than "no". Everything else is final. */
+const TRANSIENT = new Set([408, 425, 429, 500, 502, 503, 504]);
 
 export class CircleHttpClient implements CircleClient {
   private readonly baseUrl: string;
@@ -30,12 +37,17 @@ export class CircleHttpClient implements CircleClient {
   /** Circle's key does not rotate mid-process, so it is fetched and imported once. */
   private encryptionKey: Promise<CryptoKey> | undefined;
 
+  private readonly retries: number;
+  private readonly retryDelayMs: number;
+
   constructor(private readonly config: CircleHttpConfig) {
     if (!config.apiKey) throw new Error("CIRCLE_API_KEY is required");
     if (!config.entitySecret) throw new Error("CIRCLE_ENTITY_SECRET is required");
     this.baseUrl = config.baseUrl ?? CIRCLE_API_BASE_URL;
     // Bound: workerd rejects `fetch` called with a class instance as its `this`.
     this.fetchImpl = config.fetch ?? fetch.bind(globalThis);
+    this.retries = config.retries ?? 2;
+    this.retryDelayMs = config.retryDelayMs ?? 500;
   }
 
   async createContractExecutionTransaction(input: {
@@ -48,14 +60,20 @@ export class CircleHttpClient implements CircleClient {
     idempotencyKey?: string;
   }): Promise<{ data?: { id?: string } | null } | null> {
     const { fee, ...rest } = input;
-    return this.send<{ data?: { id?: string } | null }>("POST", CONTRACT_EXECUTION_PATH, {
-      ...rest,
-      // The REST API takes a flat `feeLevel`; the nested shape is the SDK's own.
-      feeLevel: fee.config.feeLevel,
-      idempotencyKey: input.idempotencyKey ?? crypto.randomUUID(),
-      // A fresh ciphertext per request; Circle rejects a replayed one.
-      entitySecretCiphertext: await this.entitySecretCiphertext(),
-    });
+    // Fixed before the first attempt, so a retry is the same request to Circle.
+    const idempotencyKey = input.idempotencyKey ?? crypto.randomUUID();
+    return this.send<{ data?: { id?: string } | null }>(
+      "POST",
+      CONTRACT_EXECUTION_PATH,
+      async () => ({
+        ...rest,
+        // The REST API takes a flat `feeLevel`; the nested shape is the SDK's own.
+        feeLevel: fee.config.feeLevel,
+        idempotencyKey,
+        // A fresh ciphertext per attempt; Circle rejects a replayed one.
+        entitySecretCiphertext: await this.entitySecretCiphertext(),
+      }),
+    );
   }
 
   async createTransferTransaction(input: {
@@ -68,12 +86,13 @@ export class CircleHttpClient implements CircleClient {
     idempotencyKey?: string;
   }): Promise<{ data?: { id?: string } | null } | null> {
     const { fee, ...rest } = input;
-    return this.send<{ data?: { id?: string } | null }>("POST", TRANSFER_PATH, {
+    const idempotencyKey = input.idempotencyKey ?? crypto.randomUUID();
+    return this.send<{ data?: { id?: string } | null }>("POST", TRANSFER_PATH, async () => ({
       ...rest,
       feeLevel: fee.config.feeLevel,
-      idempotencyKey: input.idempotencyKey ?? crypto.randomUUID(),
+      idempotencyKey,
       entitySecretCiphertext: await this.entitySecretCiphertext(),
-    });
+    }));
   }
 
   async getTransaction(input: { id: string }): Promise<{
@@ -112,23 +131,51 @@ export class CircleHttpClient implements CircleClient {
     return this.encryptionKey;
   }
 
-  private async send<T>(method: string, path: string, body?: unknown): Promise<T> {
-    const response = await this.fetchImpl(`${this.baseUrl}${path}`, {
-      method,
-      headers: {
-        authorization: `Bearer ${this.config.apiKey}`,
-        accept: "application/json",
-        ...(body === undefined ? {} : { "content-type": "application/json" }),
-      },
-      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-    });
+  /**
+   * One call to Circle, retried on the answers that mean "not now". A POST is retried too:
+   * both carry an idempotency key, so Circle treats the retry as the same request, and
+   * the body is rebuilt each time so the entity-secret ciphertext is never replayed.
+   */
+  private async send<T>(method: string, path: string, body?: () => Promise<unknown>): Promise<T> {
+    for (let attempt = 0; ; attempt += 1) {
+      const last = attempt >= this.retries;
+      let response: Response;
+      try {
+        const payload = body ? JSON.stringify(await body()) : undefined;
+        response = await this.fetchImpl(`${this.baseUrl}${path}`, {
+          method,
+          headers: {
+            authorization: `Bearer ${this.config.apiKey}`,
+            accept: "application/json",
+            ...(payload === undefined ? {} : { "content-type": "application/json" }),
+          },
+          ...(payload === undefined ? {} : { body: payload }),
+        });
+      } catch (error) {
+        if (last) {
+          const detail = error instanceof Error ? error.message : String(error);
+          throw new Error(
+            `circle ${method} ${path} unreachable after ${attempt + 1} attempts: ${detail}`,
+          );
+        }
+        await this.backOff(attempt);
+        continue;
+      }
 
-    if (!response.ok) {
-      throw new Error(
-        `circle ${method} ${path} failed: ${response.status} ${await response.text()}`,
-      );
+      if (response.ok) return (await response.json()) as T;
+
+      const detail = await response.text();
+      if (TRANSIENT.has(response.status) && !last) {
+        await this.backOff(attempt);
+        continue;
+      }
+      throw new Error(`circle ${method} ${path} failed: ${response.status} ${detail}`);
     }
-    return (await response.json()) as T;
+  }
+
+  private backOff(attempt: number): Promise<void> {
+    const delay = this.retryDelayMs * 2 ** attempt;
+    return new Promise((resolve) => setTimeout(resolve, delay));
   }
 }
 

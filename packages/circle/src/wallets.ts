@@ -97,7 +97,9 @@ export interface CircleTransaction {
 
 export interface WaitOptions {
   timeoutMs?: number;
+  /** First wait between polls; it doubles each time, up to `maxIntervalMs`. */
   intervalMs?: number;
+  maxIntervalMs?: number;
   /**
    * Treat `CONFIRMED` as done. The transaction is in a block by then and Arc finalises in
    * about a second, so waiting for `COMPLETE` only makes the comment slower to post.
@@ -200,6 +202,8 @@ export class CircleWallets {
   async waitForTransaction(id: string, options: WaitOptions = {}): Promise<CircleTransaction> {
     const timeoutMs = options.timeoutMs ?? 90_000;
     const intervalMs = options.intervalMs ?? 1_000;
+    const maxIntervalMs = options.maxIntervalMs ?? 4_000;
+    let polls = 0;
     const acceptConfirmed = options.acceptConfirmed ?? true;
     const deadline = Date.now() + timeoutMs;
 
@@ -219,7 +223,9 @@ export class CircleWallets {
         );
       }
 
-      await sleep(intervalMs);
+      // Arc confirms in a few seconds; after that a slow poll costs nothing but patience.
+      await sleep(Math.min(intervalMs * 2 ** polls, maxIntervalMs));
+      polls += 1;
     }
   }
 }
