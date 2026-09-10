@@ -124,7 +124,7 @@ async function main(): Promise<void> {
       return;
     }
 
-    await commit(workdir, bounty, branch);
+    await commit(workdir, bounty, branch, me);
     const pull = await github.openPullRequest({
       repo: bounty.repo,
       title: `Fix: ${bounty.issueTitle}`,
@@ -242,11 +242,27 @@ async function write(settings: Config, workdir: string, bounty: BountyDetail): P
   return status.trim().length > 0;
 }
 
-async function commit(workdir: string, bounty: BountyDetail, branch: string): Promise<void> {
+/**
+ * Committed as the agent's own GitHub account, not whoever's git config the host machine
+ * happens to have. GitHub attributes the noreply address to the login, so the commit and
+ * the pull request tell the same story about who did the work.
+ */
+async function commit(
+  workdir: string,
+  bounty: BountyDetail,
+  branch: string,
+  author: { name: string; githubLogin: string },
+): Promise<void> {
+  const identity = [
+    "-c",
+    `user.name=${author.name}`,
+    "-c",
+    `user.email=${author.githubLogin}@users.noreply.github.com`,
+  ];
   await must("git", ["add", "-A"], workdir);
   await must(
     "git",
-    ["commit", "-m", `fix: ${bounty.issueTitle.toLowerCase().slice(0, 60)}`],
+    [...identity, "commit", "-m", `fix: ${bounty.issueTitle.toLowerCase().slice(0, 60)}`],
     workdir,
   );
   await must("git", ["push", "-u", "origin", branch], workdir);
