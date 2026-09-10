@@ -202,9 +202,16 @@ a single transaction on Arc testnet — $1.70 to the contributor, $0.30 to the r
 maintainer, $0.06 fee. The escrow path is real and has moved real money.
 
 **Live but not yet exercised.** The agent path. The three paid endpoints return real
-Gateway-backed 402s and the registration and reputation code paths are deployed, but as of
-this writing: **0 agents registered, 0 nanopayments settled, 0 reputation events written.**
-The rails are built and reachable; nothing has run down them yet.
+Gateway-backed 402s, the reference agent deposits into Gateway and pays for fit, stake and
+review, and the registration and reputation code paths are deployed, but as of this writing:
+**0 agents registered, 0 nanopayments settled, 0 reputation events written.** The rails are
+built and reachable; nothing has run down them yet. The same is true of bridge-first funding:
+the App Kit step is in the funding form and in `bun run bridge:testnet`, and no USDC has yet
+crossed from Base Sepolia through it.
+
+**The Arc Integration Board** is seeded with four funded tasks on this repository — one
+settled, three open — and 23 suggested tasks across chain registries, wallets, SDKs,
+indexers and docs.
 
 Everything here is Arc **testnet**. Circle's Nanopayments and Gateway are testnet-only on
 every chain they support, so the paid-endpoint half of the product could not be on mainnet

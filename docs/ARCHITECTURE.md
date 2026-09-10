@@ -45,6 +45,7 @@ flowchart TB
     DCW["Developer-Controlled Wallets<br/>verifier signs settle · treasury takes the fee"]
     CE["Compliance Engine<br/>screens every payout address"]
     GW["Gateway Nanopayments<br/>verifies and batches x402 payments"]
+    AK["App Kit + CCTP<br/>bridges a funder's USDC onto Arc"]
   end
 
   subgraph arc["Arc L1 — chain 5042002, USDC is the gas token"]
@@ -54,10 +55,12 @@ flowchart TB
   end
 
   F -->|"funds a bounty"| WEB
+  F -.->|"USDC on Base Sepolia? bridge first"| AK
+  AK -.->|"mint forwarded onto Arc"| JOBS
   M -->|"policy, accept queue"| WEB
   C -->|"/claim, then a PR saying Fixes #N"| REPO
   M -->|"merges the pull request"| REPO
-  C -->|"pays per call: fit, review, stake"| X402
+  C -->|"pays per call: fit, review, stake<br/>signed from a Gateway balance"| X402
 
   REPO --- APP
   APP <-->|"webhooks in, bot comments out"| API
@@ -75,8 +78,8 @@ flowchart TB
   DCW ==>|"one transaction, three transfers"| JOBS
 ```
 
-The funder's wallet and the verifier wallet are the only two things that ever write to the
-chain. Everything else reads.
+The funder's wallet, the verifier wallet and the agent's own wallet (its one Gateway deposit)
+are the only things that ever write to the chain. Everything else reads.
 
 PNG exports of all three diagrams live in `docs/brand/`: `architecture.png`,
 `settlement-sequence.png`, `bounty-lifecycle.png`.
@@ -232,10 +235,15 @@ at the merged pull request. Its record outlives us.
 | --- | --- |
 | **Arc** | The settlement chain. USDC is the gas token, so a contributor needs one asset, and sub-second finality means the payment lands inside the webhook round trip. |
 | **Developer-Controlled Wallets** | The verifier wallet is the escrow's evaluator and signs every `settle`; the treasury wallet receives the protocol fee. |
-| **Compliance Engine** | Screens every payout address before the transaction is built. A payout that fails screening is recorded as blocked and never submitted. |
-| **Smart Contract Platform** | `ProofworkJobs` is imported for execution and monitoring. |
+| **Compliance Engine** | Screens every payout address before the transaction is built. A payout that fails screening is recorded as a failed settlement, with the screening result on the row, and never submitted. |
 | **Gateway Nanopayments (x402)** | `apps/x402` sells the fit score, the pre-review and the claim stake per call. Circle Gateway verifies and batches the settlement. |
+| **Agent Stack** | The reference agent's wallet deposits into Gateway once and signs every purchase offchain: no gas, no account, no API key. The same key signs its registration. |
+| **App Kit** | The funding form bridges USDC from Base Sepolia over CCTP from the funder's own wallet, with the mint forwarded onto Arc, before the escrow is funded. |
 | **ERC-8004 registries** | Agent identity is verified with `ownerOf` at registration; every settlement for an agent writes `giveFeedback` from the verifier. |
+
+Not used, deliberately: the Smart Contract Platform's event monitors. The escrow's events are
+read straight from the chain by the reconciler every minute, and a second path through Circle
+webhooks is on the roadmap rather than in the product.
 
 Two Circle libraries needed adapting to run on Workers, in opposite directions. The Node SDK
 is axios-based, and axios sets `cache: "default"` on its requests, which workerd rejects
