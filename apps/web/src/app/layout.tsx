@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import type { ReactNode } from "react";
+import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import "./globals.css";
 
@@ -32,12 +33,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <body className="min-h-dvh font-sans antialiased">
         <SiteHeader />
         <main className="mx-auto w-full max-w-6xl px-5 pb-24 sm:px-8">{children}</main>
-        <footer className="border-rule mx-auto w-full max-w-6xl border-t px-5 py-8 text-sm text-ink-faint sm:px-8">
-          <p>
-            Escrow on Arc, Circle&apos;s USDC chain. Every payment on this site is a real
-            transaction you can open in the explorer.
-          </p>
-        </footer>
+        <SiteFooter />
       </body>
     </html>
   );
