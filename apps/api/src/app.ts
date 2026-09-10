@@ -11,7 +11,7 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 import { type Env, required } from "./env";
-import { fail } from "./http";
+import { fail, isMalformedId } from "./http";
 import { type AgentVariables, agentRoutes } from "./routes/agents";
 import { boardRoutes } from "./routes/board";
 import { bountyRoutes } from "./routes/bounties";
@@ -75,8 +75,24 @@ function originOf(url: string | undefined): string | undefined {
   }
 }
 
-/** Liveness. Deliberately does no I/O, so it stays honest about the Worker itself. */
-app.get("/health", (c) => c.json({ ok: true, service: "proofwork-api" }));
+/**
+ * Liveness. Deliberately does no I/O, so it stays honest about the Worker itself; the
+ * chain and contract it names come from configuration, not from asking anyone.
+ */
+app.get("/health", (c) => {
+  let chain: { network: string; chainId: number | null; contract: string | null };
+  try {
+    const network = activeNetwork(c.env);
+    chain = {
+      network,
+      chainId: chainIdFor(network, c.env),
+      contract: proofworkJobsAddress(network, c.env),
+    };
+  } catch {
+    chain = { network: c.env.ARC_NETWORK ?? "unknown", chainId: null, contract: null };
+  }
+  return c.json({ ok: true, service: "proofwork-api", ...chain });
+});
 
 /**
  * Everything a client needs to talk to the right chain and contract.
@@ -115,6 +131,7 @@ app.post("/webhooks/github", async (c) => {
 app.notFound((c) => fail(c, 404, "not_found", `no route for ${c.req.method} ${c.req.path}`));
 
 app.onError((error, c) => {
+  if (isMalformedId(error)) return fail(c, 404, "not_found", "no such record");
   console.error("unhandled", { path: c.req.path, message: String(error) });
   return fail(c, 500, "internal_error", "the request could not be completed");
 });

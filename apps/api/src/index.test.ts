@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import app from "./app";
 import type { Env } from "./env";
+import { isMalformedId } from "./http";
 
 const env = {
   ARC_NETWORK: "testnet",
@@ -11,7 +12,22 @@ describe("health", () => {
   it("answers without touching the database or the chain", async () => {
     const res = await app.request("/health", {}, env);
     expect(res.status).toBe(200);
-    await expect(res.json()).resolves.toEqual({ ok: true, service: "proofwork-api" });
+    await expect(res.json()).resolves.toMatchObject({
+      ok: true,
+      service: "proofwork-api",
+      network: "testnet",
+      chainId: 5_042_002,
+      contract: expect.stringMatching(/^0x[0-9a-fA-F]{40}$/),
+    });
+  });
+
+  it("stays up even when the chain is misconfigured", async () => {
+    const res = await app.request("/health", {}, {
+      ...env,
+      ARC_NETWORK: "mainnet",
+    } as unknown as Env);
+    expect(res.status).toBe(200);
+    await expect(res.json()).resolves.toMatchObject({ ok: true, chainId: null, contract: null });
   });
 });
 
@@ -69,6 +85,17 @@ describe("cors", () => {
       withWeb,
     );
     expect(res.headers.get("access-control-allow-origin")).toBe("http://localhost:3000");
+  });
+});
+
+describe("malformed ids", () => {
+  it("recognises postgres refusing a non-uuid id", () => {
+    expect(isMalformedId({ code: "22P02", message: "invalid input syntax for type uuid" })).toBe(
+      true,
+    );
+    expect(isMalformedId(new Error('invalid input syntax for type uuid: "nope"'))).toBe(true);
+    expect(isMalformedId(new Error("connection refused"))).toBe(false);
+    expect(isMalformedId(undefined)).toBe(false);
   });
 });
 
