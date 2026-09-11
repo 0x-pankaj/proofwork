@@ -225,20 +225,19 @@ which held only fees, and the transfer call was missing the chain name Circle re
 to a token address. Both are fixed; the lesson about the float is in the README's mainnet
 runbook.
 
-**Exercised, in one direction.** The App Kit bridge moved $1.00 across CCTP on 12 September:
-[approve](https://testnet.arcscan.app/tx/0xfd58cb6e9f95018272c010e4d9be0a04784010ffb4c882f33f523151078ef54b)
-and [burn](https://testnet.arcscan.app/tx/0x80fad004071f0a1d272b859a235ff7ddce06069978da149319fba203f3804996)
-on Arc, the attestation, then the [mint](https://sepolia.basescan.org/tx/0xac1dbc595d76c215748178c8e59adf01145d03e5eb1c8343914ec1b6a7f82e8d)
-on Base Sepolia. Four steps, all green.
+**Exercised.** On 12 September the App Kit bridge moved $2.00 in the funding direction:
+[approve](https://sepolia.basescan.org/tx/0x0c5d201b24972175755b8a0fa6cbb12597e9a9225b4fba290225cf97ea9aba16)
+and [burn](https://sepolia.basescan.org/tx/0x9d2a996d3bf8f4d46bc52a5d9ec0501c777e428e14b83123f9a20aeb4ff85928)
+on Base Sepolia, the attestation, then the [mint](https://testnet.arcscan.app/tx/0xc9f3f863951c60ee29ad070f5e425c4cf0e38f623a1fa43d47c1251e58cf0a6f)
+on Arc. Four steps, all green. The mint was paid by Circle's Forwarding Service rather than by
+the funder, so arriving on Arc costs them nothing.
 
-It ran Arc → Base Sepolia rather than the funding direction, because burning on Base Sepolia
-costs Base Sepolia ETH and every faucet for it now wants a mainnet balance first, while on Arc
-the gas is the USDC the wallet already held. The funding form makes the same `kit.bridge()`
-call with `from` and `to` swapped.
-
-One thing that run does settle for the funding path: the mint was paid by Circle's Forwarding
-Service, not by the wallet — that address has never held a wei of Base Sepolia ETH — which is
-exactly what the form relies on for the Arc side of a funder's bridge.
+The same call had already run [the other way](https://sepolia.basescan.org/tx/0xac1dbc595d76c215748178c8e59adf01145d03e5eb1c8343914ec1b6a7f82e8d)
+while the wallet still held no Base Sepolia ETH. Getting that ETH turned out to be the one
+part nobody can automate: every Base Sepolia faucet now wants a mainnet balance first, so the
+gas came from an Ethereum Sepolia faucet and crossed on Base's own bridge. It cost a millionth
+of an ether to spend. Worth knowing before a demo, and a reminder that the awkward chain in
+this product is never Arc.
 
 **Unsolicited demand.** Within hours of the bounties being funded, three GitHub accounts
 nobody invited opened pull requests against issues #4 and #5 without claiming. The bot told

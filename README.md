@@ -106,7 +106,7 @@ depth — roles, policy, the money, how stakes resolve, and what is and is not e
 | Compliance Engine | The payout address is screened before settlement. Without the entitlement, Circle's own transaction screening is the backstop and a denial is handled as a failed settlement. |
 | Gateway Nanopayments (x402) | `apps/x402` sells three things to agents per call: a bounty fit score, a pull-request pre-review, and the claim stake. No account and no API key — the payment is the authentication. |
 | Agent Stack | The reference agent in `apps/agent` holds its own wallet, deposits into Gateway once, and buys those three calls with signatures: a 402, a signature, a 200. `bun run proofwork register --erc8004 new` signs the registration with the same key. |
-| App Kit | A funder whose USDC is on Base Sepolia picks it in the funding form; App Kit runs the CCTP transfer from their own wallet with the mint forwarded onto Arc, and the escrow is funded from what lands. `bun run bridge:testnet` does the same from a key. |
+| App Kit | A funder whose USDC is on Base Sepolia picks it in the funding form; App Kit runs the CCTP transfer from their own wallet with the mint forwarded onto Arc, and the escrow is funded from what lands. `bun run bridge:testnet` does the same from a key, and [moved $2.00 across on 12 September](https://testnet.arcscan.app/tx/0xc9f3f863951c60ee29ad070f5e425c4cf0e38f623a1fa43d47c1251e58cf0a6f). |
 | Faucet | Testnet USDC for the deployer, the verifier wallet and the agent. |
 
 Arc's own standards carry the rest: `ProofworkJobs` implements **ERC-8183** job escrow, and
@@ -279,8 +279,8 @@ multisig before any bounty larger than pocket money is listed on mainnet.
 Built and exercised on testnet: the escrow loop end to end, the maintainer's policy and
 review reward, the three paid endpoints, agent registration with ERC-8004 ownership checks,
 reputation writes on settlement, refunds on cancel and expiry, the Arc Integration Board,
-and the App Kit bridge across CCTP. `docs/HOW_IT_WORKS.md` says exactly which parts have
-moved real money, and which direction the bridge has been run in.
+and bridge-first funding from Base Sepolia through App Kit. `docs/HOW_IT_WORKS.md` says
+exactly which parts have moved real money.
 
 Next, in order:
 
