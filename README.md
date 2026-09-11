@@ -279,8 +279,8 @@ multisig before any bounty larger than pocket money is listed on mainnet.
 Built and exercised on testnet: the escrow loop end to end, the maintainer's policy and
 review reward, the three paid endpoints, agent registration with ERC-8004 ownership checks,
 reputation writes on settlement, refunds on cancel and expiry, the Arc Integration Board,
-and bridge-first funding from Base Sepolia through App Kit. `docs/HOW_IT_WORKS.md` says
-exactly which parts have moved real money.
+and the App Kit bridge across CCTP. `docs/HOW_IT_WORKS.md` says exactly which parts have
+moved real money, and which direction the bridge has been run in.
 
 Next, in order:
 

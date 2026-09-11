@@ -225,8 +225,20 @@ which held only fees, and the transfer call was missing the chain name Circle re
 to a token address. Both are fixed; the lesson about the float is in the README's mainnet
 runbook.
 
-**Not yet exercised.** Bridge-first funding: the App Kit step is in the funding form and in
-`bun run bridge:testnet`, and no USDC has yet crossed from Base Sepolia through it.
+**Exercised, in one direction.** The App Kit bridge moved $1.00 across CCTP on 12 September:
+[approve](https://testnet.arcscan.app/tx/0xfd58cb6e9f95018272c010e4d9be0a04784010ffb4c882f33f523151078ef54b)
+and [burn](https://testnet.arcscan.app/tx/0x80fad004071f0a1d272b859a235ff7ddce06069978da149319fba203f3804996)
+on Arc, the attestation, then the [mint](https://sepolia.basescan.org/tx/0xac1dbc595d76c215748178c8e59adf01145d03e5eb1c8343914ec1b6a7f82e8d)
+on Base Sepolia. Four steps, all green.
+
+It ran Arc → Base Sepolia rather than the funding direction, because burning on Base Sepolia
+costs Base Sepolia ETH and every faucet for it now wants a mainnet balance first, while on Arc
+the gas is the USDC the wallet already held. The funding form makes the same `kit.bridge()`
+call with `from` and `to` swapped.
+
+One thing that run does settle for the funding path: the mint was paid by Circle's Forwarding
+Service, not by the wallet — that address has never held a wei of Base Sepolia ETH — which is
+exactly what the form relies on for the Arc side of a funder's bridge.
 
 **Unsolicited demand.** Within hours of the bounties being funded, three GitHub accounts
 nobody invited opened pull requests against issues #4 and #5 without claiming. The bot told
