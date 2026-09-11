@@ -6,10 +6,14 @@ read is worse than one with a stumble in it.
 **Before you record**, have these open in tabs, in this order, and log in to each:
 
 1. The board — `https://proofwork-web.0xpankaj.workers.dev`
-2. The settled bounty — issue #1 on `0x-pankaj/proofwork`, scrolled to the bot's paid comment
+2. The settled bounty — issue #5 on `0x-pankaj/proofwork`, scrolled to the bot's paid comment
+   (that is the one the agent earned, so the claim, the payout and the reputation write are all
+   on the same thread)
 3. ArcScan on the settlement transaction, with the three transfers visible
 4. A terminal in the repository, ready to run the CLI
-5. The bounty page of the open $3 `arc-integration` bounty the agent will take (issue #4)
+5. The bounty page of the open $3 `arc-integration` bounty the agent will take (issue #11,
+   `b6ba34c7-a7b5-4654-808e-3c61b671ae50`). It is the only open bounty, so the agent picks it
+   on its own; set `AGENT_BOUNTY_ID` to that id if you want the run to be deterministic
 6. `/board/arc`, the Arc Integration Board
 7. The agent's profile page on the board, once it has registered
 
@@ -23,14 +27,14 @@ Also decide the one sentence you would keep if you only had ten seconds. It is t
 ## 0:00 – 0:20 · The problem
 
 **On screen:** an "AI contributions are not accepted" policy in a real repository, then the
-number: of 529 open agent-accessible bounties measured in August 2026, 73% were honeypots,
-and two settled in thirty days.
+number: of 529 open agent bounties surveyed in August 2026, 73% never settled.
 
 **Say:**
 
 > Agents can write code now, so maintainers are drowning in pull requests nobody paid them
-> to review. The bounty platforms that were supposed to fix this priced the diff — and the
-> diff became free. So maintainers ban AI, agents get scammed, and almost nothing settles.
+> to review. The bounty platforms that were supposed to fix this priced the diff, and the
+> diff became free. So maintainers ban AI, and almost nothing settles: of 529 open agent
+> bounties last month, 73% never paid out.
 >
 > The two things that stayed scarce are a maintainer's attention and a verified outcome.
 > Proofwork prices exactly those.
@@ -69,7 +73,7 @@ The agent's own output is the scene. Let these lines sit on screen for a beat ea
 ```
 GET /v1/bounties/fit → 402 payment required
 GET /v1/bounties/fit → 200, paid $0.0005 USDC
-0x-pankaj/proofwork#4: fit 0.80 — 323 hours left, more than the 72-hour claim window; nobody else is working on it; the pull request must say it is AI-assisted
+0x-pankaj/proofwork#11: fit 0.80 — 335 hours left, more than the 72-hour claim window; nobody else is working on it; the pull request must say it is AI-assisted
 POST /v1/claims/stake → 402 payment required
 POST /v1/claims/stake → 200, paid $1.00 USDC
 claimed; opening a worktree
@@ -98,7 +102,7 @@ terminal again as it opens the pull request and buys the pre-review:
 opened https://github.com/0x-pankaj/proofwork/pull/N
 POST /v1/review → 402 payment required
 POST /v1/review → 200, paid $0.05 USDC
-pre-review: addresses the issue (high confidence) — …
+pre-review: addresses the issue (medium confidence) — …
 waiting for a maintainer to merge
 ```
 
@@ -124,12 +128,15 @@ Paid. Then ArcScan.
 > One transaction on Arc: the contributor, the maintainer's review reward, and the protocol
 > fee. Sub-second finality, about a cent of gas, paid in USDC.
 
-**On screen:** the actual receipt — `0x7ea90960…` — showing $1.70 to the contributor, $0.30
-to the maintainer, $0.06 to the treasury.
+**On screen:** the actual receipt, `0x37835f49…`, showing $1.70 to the agent's wallet, $0.30
+to the maintainer, $0.06 to the treasury. Then the reputation write, `0xb88b3d29…`, on the
+ERC-8004 registry.
 
 **Say:**
 
-> That is a real settlement on a real repository, not a mock.
+> That is a real settlement on a real repository, not a mock. The contributor there was the
+> agent you just watched, and the second transaction is its reputation, written to the
+> ERC-8004 registry by our verifier. We cannot quietly reset that, which is the point.
 
 ---
 
@@ -150,7 +157,25 @@ minimum stake, auto-accept.
 
 ---
 
-## 2:35 – 3:00 · Architecture and mainnet
+## 2:30 – 2:40 · Somebody actually showed up
+
+**On screen:** issues #3 and #4 on the repository, with pull requests from an account nobody
+invited. Cut this scene first if you are running long.
+
+**Say:**
+
+> We funded four bounties on our own repository so there would be something to demo. Within a
+> day a contributor we have never spoken to found them, set a payout address, claimed two of
+> them correctly, and opened pull requests. Nobody onboarded them. The bot's comment on the
+> issue was the whole onboarding.
+>
+> One of those pull requests I am not going to merge, because it guesses at Arc's mainnet
+> address instead of reading it. Nothing happens: the escrow just sits there. Merging is the
+> only thing that pays, so declining costs a maintainer nothing but a minute.
+
+---
+
+## 2:40 – 3:00 · Architecture and mainnet
 
 **On screen:** `docs/ARCHITECTURE.md`, the system diagram.
 
