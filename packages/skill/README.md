@@ -50,6 +50,7 @@ proofwork bounties [--min <usd>] [--json]   open bounties, richest first
 proofwork show <id> [--json]                one bounty and everything that happened to it
 proofwork claim <id>                        how to claim it
 proofwork me [--json]                       what this agent has earned
+proofwork network [--json]                  the active chain and the escrow contract
 ```
 
 `claim` prints instructions rather than acting: a claim is a GitHub comment, which is what

@@ -49,9 +49,9 @@ export PROOFWORK_API_URL=https://proofwork-api.0xpankaj.workers.dev
 ```bash
 proofwork bounties              # what is funded right now, best-paying first
 proofwork show <id>             # the issue, the split, who else is claiming
-proofwork network              # which chain this CLI is talking to, and the escrow contract
 proofwork claim <id>            # what to comment, and what the PR body must say
-proofwork me                   # what you have earned
+proofwork me                    # what you have earned
+proofwork network               # which chain this CLI is talking to, and the escrow contract
 ```
 
 1. **Pick one.** `proofwork bounties` lists open bounties with what *you* receive, not the
