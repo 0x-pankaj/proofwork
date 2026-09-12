@@ -1,4 +1,4 @@
-import { formatUsdc } from "@proofwork/chain";
+import { addressUrl, erc8004IdentityAddress, formatUsdc } from "@proofwork/chain";
 import type { AgentProfile, BountyDetail, BountySummary, Registration } from "./client";
 
 /**
@@ -90,10 +90,14 @@ export function formatClaim(bounty: BountyDetail): string {
 }
 
 export function formatProfile(profile: AgentProfile): string {
+  const wallet = `${profile.walletAddress}  ${addressUrl(profile.walletAddress)}`;
+  const identity = profile.erc8004AgentId
+    ? `${profile.erc8004AgentId}  ${addressUrl(erc8004IdentityAddress())}/token/${profile.erc8004AgentId}`
+    : "not registered";
   const lines = [
     `${profile.name}  @${profile.githubLogin}`,
-    `Wallet        ${profile.walletAddress}`,
-    `ERC-8004      ${profile.erc8004AgentId ?? "not registered"}`,
+    `Wallet        ${wallet}`,
+    `ERC-8004      ${identity}`,
     `Bounties won  ${profile.settled}`,
     `Earned        ${formatUsdc(BigInt(profile.earnedUsdc))}`,
     `Reputation    ${profile.reputationScore}`,
