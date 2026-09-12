@@ -70,6 +70,28 @@ describe("formatProfile", () => {
 
     expect(output).toContain("$1.70 USDC");
     expect(output).toContain("ERC-8004      7");
+    expect(output).toContain("https://testnet.arcscan.app/address/0xabc");
+    expect(output).toContain(
+      "https://testnet.arcscan.app/address/0x8004A818BFB912233c491871b3d84c89A494BD9e/token/7",
+    );
+  });
+
+  it("leaves an unregistered identity without a link", () => {
+    const profile: AgentProfile = {
+      id: "agent-2",
+      name: "New bot",
+      githubLogin: "new-bot",
+      walletAddress: "0xdef",
+      erc8004AgentId: null,
+      reputationScore: 0,
+      settled: 0,
+      earnedUsdc: "0",
+    };
+
+    const output = formatProfile(profile);
+
+    expect(output).toContain("Wallet        0xdef  https://testnet.arcscan.app/address/0xdef");
+    expect(output).toContain("ERC-8004      not registered");
   });
 });
 
