@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { proofworkJobsAbi } from "./abis";
 import { ADDRESSES, addressesFor, proofworkJobsAddress, usdcAddress } from "./addresses";
 import { deploymentFor } from "./deployments";
-import { ARC_TESTNET_CHAIN_ID } from "./networks";
+import { ARC_TESTNET_CHAIN_ID, ARC_MAINNET_CHAIN_ID } from "./networks";
 
 describe("addresses", () => {
   it("exposes USDC as the 6-decimal ERC-20 view on both networks", () => {
@@ -21,9 +21,8 @@ describe("addresses", () => {
     expect(ADDRESSES.testnet.ERC8004_REPUTATION).toBe("0x8004B663056A597Dffe9eCcC1965A193B7388713");
   });
 
-  it("fails loudly on a network with no deployment rather than sending to nowhere", () => {
-    // Mainnet has neither launch-day parameters nor a deployment record yet.
-    expect(() => proofworkJobsAddress("mainnet", {})).toThrow(/not configured/);
+  it("resolves the escrow on mainnet from the committed deployment record", () => {
+    expect(proofworkJobsAddress("mainnet", {})).toMatch(/^0x[0-9a-fA-F]{40}$/);
   });
 
   it("returns the escrow address once deployed", () => {
@@ -73,5 +72,18 @@ describe("arc testnet deployment", () => {
     expect(deployment?.feeBps).toBe(300);
     expect(deployment?.paymentToken).toBe(ADDRESSES.testnet.USDC);
     expect(deployment?.treasury).not.toBe(deployment?.deployer);
+  });
+});
+
+describe("arc mainnet deployment", () => {
+  it("resolves the escrow with no configuration, ready for launch day", () => {
+    expect(proofworkJobsAddress("mainnet", {})).toMatch(/^0x[0-9a-fA-F]{40}$/);
+  });
+
+  it("has a deployment record committed before launch", () => {
+    const deployment = deploymentFor(ARC_MAINNET_CHAIN_ID);
+    expect(deployment).toBeDefined();
+    expect(deployment?.chainId).toBe(5_042_001);
+    expect(deployment?.feeBps).toBe(300);
   });
 });

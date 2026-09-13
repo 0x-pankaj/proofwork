@@ -10,6 +10,8 @@ export const ARC_NETWORKS = ["testnet", "mainnet"] as const;
 export { arcTestnet };
 
 export const ARC_TESTNET_CHAIN_ID = 5_042_002;
+/** Arc mainnet chain id, published on launch day. */
+export const ARC_MAINNET_CHAIN_ID = 5_042_001;
 export const ARC_TESTNET_RPC_URL = "https://rpc.testnet.arc.network";
 export const ARC_TESTNET_WS_URL = "wss://rpc.testnet.arc.network";
 export const ARC_TESTNET_EXPLORER_URL = "https://testnet.arcscan.app";
@@ -90,9 +92,11 @@ export function activeChain(env: ChainEnv = chainEnv()) {
   return chainFor(activeNetwork(env), env);
 }
 
-/** The chain id for a network. Throws for mainnet until launch-day parameters are set. */
+/** The chain id for a network. Mainnet chain id is known; the environment can still override it on launch day. */
 export function chainIdFor(network: ArcNetwork, env: ChainEnv = chainEnv()): number {
-  return network === "testnet" ? ARC_TESTNET_CHAIN_ID : defineArcMainnet(env).id;
+  return network === "testnet"
+    ? ARC_TESTNET_CHAIN_ID
+    : Number(env.ARC_MAINNET_CHAIN_ID) || ARC_MAINNET_CHAIN_ID;
 }
 
 /** The RPC URL for a given network, overridable by environment. */

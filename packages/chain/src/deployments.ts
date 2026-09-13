@@ -23,6 +23,16 @@ export const DEPLOYMENTS: Record<string, Deployment> = {
     paymentToken: "0x3600000000000000000000000000000000000000",
     treasury: "0x3975261337566C22A5129EB82BdCC8c364C4a313",
   },
+  "5042001": {
+    ProofworkJobs: "0x3Bc728A813a7aBe0cB898fd63967525e92353D85",
+    block: 0,
+    chainId: 5_042_001,
+    deployer: "0xb57af3feBa9D6759CE38452247e066981DddEbb3",
+    feeBps: 300,
+    owner: "0xb57af3feBa9D6759CE38452247e066981DddEbb3",
+    paymentToken: "0x3600000000000000000000000000000000000000",
+    treasury: "0x3975261337566C22A5129EB82BdCC8c364C4a313",
+  },
 };
 
 /** The deployment for a chain, if this contract has been deployed there yet. */
