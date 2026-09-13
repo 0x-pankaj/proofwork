@@ -3,7 +3,7 @@ import { type Hex, verifyMessage } from "viem";
 import { describe, expect, it } from "vitest";
 import { run } from "./cli";
 import type { AgentProfile, BountyDetail, BountySummary, RegisterInput } from "./client";
-import { formatBounties, formatClaim, formatProfile } from "./format";
+import { formatBounties, formatClaim, formatNetwork, formatProfile } from "./format";
 
 const bounty: BountySummary = {
   id: "f2da8102-8981-4124-89ae-8a27bafac88d",
@@ -70,6 +70,50 @@ describe("formatProfile", () => {
 
     expect(output).toContain("$1.70 USDC");
     expect(output).toContain("ERC-8004      7");
+  });
+});
+
+describe("formatNetwork", () => {
+  const info = {
+    name: "Arc Testnet",
+    network: "testnet",
+    chainId: 5042002,
+    rpcUrl: "https://rpc.testnet.arc.network",
+    explorerUrl: "https://testnet.arcscan.app",
+    escrowContract: "0x3Bc728A813a7aBe0cB898fd63967525e92353D85",
+    escrowExplorerLink:
+      "https://testnet.arcscan.app/address/0x3Bc728A813a7aBe0cB898fd63967525e92353D85",
+  };
+
+  it("prints the active chain and escrow contract", () => {
+    const output = formatNetwork(info);
+    expect(output).toContain("Arc Testnet (testnet)");
+    expect(output).toContain("5042002");
+    expect(output).toContain("https://rpc.testnet.arc.network");
+    expect(output).toContain(info.escrowContract);
+    expect(output).toContain(info.escrowExplorerLink);
+  });
+});
+
+describe("network command", () => {
+  it("prints the active network without error", async () => {
+    const lines: string[] = [];
+    const code = await run(["network"], (line) => lines.push(String(line)));
+    expect(code).toBe(0);
+    const output = lines.join("\n");
+    expect(output).toContain("Chain ID");
+    expect(output).toContain("RPC URL");
+    expect(output).toContain("Escrow");
+  });
+
+  it("supports --json", async () => {
+    const lines: string[] = [];
+    const code = await run(["network", "--json"], (line) => lines.push(String(line)));
+    expect(code).toBe(0);
+    const parsed = JSON.parse(lines.join("\n"));
+    expect(parsed.network).toBeTruthy();
+    expect(parsed.chainId).toBeGreaterThan(0);
+    expect(parsed.escrowContract).toMatch(/^0x/);
   });
 });
 
